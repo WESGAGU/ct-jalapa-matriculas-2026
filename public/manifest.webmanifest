@@ -1,0 +1,22 @@
+{
+  "name": "Matrículas Tech Jalapa",
+  "short_name": "Matrículas App",
+  "description": "Sistema de registro de matrículas para el centro tecnológico de Jalapa",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#29ABE2",
+  "background_color": "#F0F4F7",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait"
+}

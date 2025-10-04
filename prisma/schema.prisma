@@ -1,0 +1,80 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider     = "postgresql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+model User {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  name      String?    @unique
+  password  String
+  role      Role       @default(USER)
+  registers Register[] // registers created by the user
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model Register {
+  id                   String   @id @default(cuid())
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  nombres              String
+  apellidos            String
+  birthDate            DateTime
+  gender               String
+  estadoCivil          String?
+  cedula               String?  @unique
+  municipioNacimiento  String
+  deptoDomiciliar      String
+  municipioDomiciliar  String
+  comunidad            String
+  direccion            String
+  numPersonasHogar     Int
+  telefonoCelular      String
+  email                String?  @unique
+  nivelAcademico       String
+  carreraTecnica       String
+  nombreEmergencia     String
+  parentescoEmergencia String
+  telefonoEmergencia   String
+  direccionParentesco  String?
+
+  // Archivos en Cloudinary
+  cedulaFileFrente     String?
+  cedulaFileReverso    String?
+  birthCertificateFile String?
+  diplomaFile          String?
+  gradesCertificateFile String? // Nuevo campo para certificado de notas
+  firmaProtagonista    String?
+
+  // Relación con docente (User) - Es opcional para registros públicos
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model Career {
+  id            String                @id @default(cuid())
+  name          String                @unique
+  shift         Shift // Diurno, Sabatino o Dominical
+  active        Boolean               @default(true)
+  createdAt     DateTime              @default(now())
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Shift {
+  DIURNO
+  SABATINO
+  DOMINICAL
+}
