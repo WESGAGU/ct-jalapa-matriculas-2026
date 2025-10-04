@@ -26,17 +26,19 @@ export default function RegisterListView() {
   const loadAllData = useCallback(async () => {
     setIsLoading(true);
     try {
+      // Pedimos solo la primera página de 5 registros
       const [serverData, localData] = await Promise.all([
-        getEnrollments(),
+        getEnrollments(1, 5), 
         getPendingEnrollments(),
       ]);
-      setEnrollments(serverData as Register[]);
+      // Accedemos a la propiedad .enrollments del objeto que retorna la API
+      setEnrollments(serverData.enrollments as Register[]);
       setPendingEnrollments(localData);
     } catch {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se pudieron cargar las matrículas",
+        description: "No se pudieron cargar las matrículas recientes",
       });
     } finally {
       setIsLoading(false);
@@ -49,7 +51,8 @@ export default function RegisterListView() {
     return () => window.removeEventListener("storageUpdated", loadAllData);
   }, [loadAllData]);
 
-  const allEnrollments = [...pendingEnrollments, ...enrollments].slice(0, 5);
+  // Ya no necesitamos .slice(0, 5) porque el backend ya nos da solo 5
+  const allEnrollments = [...pendingEnrollments, ...enrollments];
 
   if (isLoading) {
     return (
