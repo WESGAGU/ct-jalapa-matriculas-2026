@@ -210,6 +210,57 @@ const faqData = [
     id: "item-4",
     question: (
       <div className="flex items-center">
+        <span>¿Beneficios de estudiar en el centro tecnólogico de Jalapa?</span>
+      </div>
+    ),
+    answer: (
+      <div className="space-y-2">
+        <p>Nuestro calendario académico está estructurado de la siguiente manera:</p>
+        <ul className="space-y-1">
+          <li className="flex items-center">
+            <span role="img" aria-label="emoji" className="mr-2">
+              ✅
+            </span>
+            Internado.
+          </li>
+          <li className="flex items-center">
+            <span role="img" aria-label="emoji" className="mr-2">
+              ✅
+            </span>
+            Internos 3 tiempos alimenticios (Desayuno, Almuerzo y Cena), externos 1 tiempo (Almuerzo).
+          </li>
+          <li className="flex items-center">
+            <span role="img" aria-label="emoji" className="mr-2">
+              ✅
+            </span>
+            Materíales didácticos gratuitos para prácticas.
+          </li>
+           <li className="flex items-center">
+            <span role="img" aria-label="emoji" className="mr-2">
+              ✅
+            </span>
+            Biblioteca.
+          </li>
+           <li className="flex items-center">
+            <span role="img" aria-label="emoji" className="mr-2">
+              ✅
+            </span>
+            Canchas deportivas.
+          </li>
+           <li className="flex items-center">
+            <span role="img" aria-label="emoji" className="mr-2">
+              ✅
+            </span>
+            Internet.
+          </li>
+        </ul>
+      </div>
+    ),
+  },
+  {
+    id: "item-5",
+    question: (
+      <div className="flex items-center">
         <span>¿Cuando es el inicio de clases?</span>
       </div>
     ),

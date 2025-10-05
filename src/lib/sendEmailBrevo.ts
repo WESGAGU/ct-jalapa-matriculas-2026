@@ -1,5 +1,5 @@
-import * as Brevo from '@getbrevo/brevo';
-import type { Register } from './types';
+import * as Brevo from "@getbrevo/brevo";
+import type { Register } from "./types";
 
 // 1. Crea la instancia de la API directamente
 const apiInstance = new Brevo.TransactionalEmailsApi();
@@ -16,87 +16,96 @@ apiInstance.setApiKey(
  */
 export async function sendConfirmationEmail(enrollment: Register) {
   if (!enrollment.email) {
-    console.warn('Intento de enviar correo sin una dirección de email.');
+    console.warn("Intento de enviar correo sin una dirección de email.");
     return;
   }
 
-  // URL absoluta de tu logo. Asegúrate que 'logo-inatec-2016.png' está en tu carpeta /public
-  const logoUrl = 'https://ct-jalapa-matriculas-2026.vercel.app/logo-inatec-2016.png';
 
   const sendSmtpEmail = new Brevo.SendSmtpEmail();
 
-  sendSmtpEmail.subject = 'Confirmación de Matrícula - Centro Tecnológico de Jalapa';
-  sendSmtpEmail.to = [{ email: enrollment.email, name: `${enrollment.nombres} ${enrollment.apellidos}` }];
+  sendSmtpEmail.subject =
+    "Confirmación de Matrícula - Centro Tecnológico de Jalapa";
+  sendSmtpEmail.to = [
+    {
+      email: enrollment.email,
+      name: `${enrollment.nombres} ${enrollment.apellidos}`,
+    },
+  ];
   sendSmtpEmail.htmlContent = `
     <!DOCTYPE html>
     <html lang="es">
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
       <style>
-        body { margin: 0; padding: 0; background-color: #f4f4f4; font-family: Arial, sans-serif; }
-        .wrapper { width: 100%; background-color: #f4f4f4; padding: 20px 0; }
-        .container { max-width: 600px; margin: auto; background-color: #ffffff; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
-        .header { text-align: center; padding: 20px 0; }
-        .logo { max-width: 180px; height: auto; }
-        .content { padding: 0 30px 30px 30px; }
-        h1 { color: #003366; font-size: 24px; margin-top: 0; }
-        p { line-height: 1.6; color: #333; }
-        strong { color: #0056b3; }
-        hr { border: 0; border-top: 1px solid #eee; margin: 20px 0; }
-        .footer { font-size: 0.9em; color: #777; }
-        .subtitle { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 20px; }
-        .subtitle span { font-size: 18px; color: #28a745; font-weight: bold; }
-        .contact-info, .social-links { text-align: center; padding-top: 20px; }
-        .contact-info { border-top: 1px solid #eee; }
-        .contact-info p { margin: 5px 0; color: #555; }
-        .social-links { padding-top: 15px; }
-        .social-links a { margin: 0 10px; }
+        body { margin: 0; padding: 0; font-family: 'Roboto', Arial, sans-serif; background-color: #f4f7f6; }
+        .wrapper { width: 100%; table-layout: fixed; padding: 40px 0; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        
+        /* --- Header --- */
+        .header { background-color: #004a99; padding: 24px; text-align: center; }
+        .header .logo { max-width: 160px; height: auto; margin-bottom: 12px; }
+        .header .subtitle { color: #ffffff; font-size: 14px; letter-spacing: 0.5px; margin: 0; }
+
+        /* --- Content --- */
+        .content { padding: 32px; }
+        .content h1 { font-size: 26px; color: #333333; margin: 0 0 20px; font-weight: 700; }
+        .status-badge { display: inline-block; background-color: #eaf7ec; color: #28a745; padding: 10px 18px; border-radius: 20px; font-weight: bold; margin-bottom: 24px; }
+        .status-badge img { vertical-align: middle; margin-right: 8px; }
+        .content p { line-height: 1.6; color: #555555; margin: 0 0 16px; }
+        .content a { color: #337EB3; text-decoration: none; }
+        .content strong { color: #333333; }
+        
+        /* --- Footer --- */
+        .footer { padding: 32px; text-align: left; font-size: 14px; }
+        .footer .signature p { margin: 0; line-height: 1.7; color: #666; }
+        .footer .signature strong { color: #0056b3; }
+        .divider { border: 0; border-top: 1px solid #eeeeee; margin: 24px 0; }
+        .contact-help { text-align: center; }
+        .contact-help h2 { font-size: 16px; color: #333; margin: 0 0 12px; }
+        .contact-help .phone-numbers a { color: #337EB3; text-decoration: none; margin: 0 5px; }
+        .contact-help .phone-numbers span { color: #dddddd; }
+        .social-links { text-align: center; padding-top: 20px; }
+        .social-links a { margin: 0 8px; }
         .social-links img { width: 32px; height: 32px; }
 
-        @media (max-width: 600px) {
-          h1 { font-size: 20px; }
-          .content { padding: 0 20px 20px 20px; }
-        }
       </style>
     </head>
     <body>
       <div class="wrapper">
         <div class="container">
           <div class="header">
-            <img src="${logoUrl}" alt="Logo INATEC" class="logo">
+            <img src="https://ct-jalapa-matriculas-2026.vercel.app/logo-inatec-2016.png" alt="Logo INATEC" class="logo">
           </div>
           <div class="content">
             <h1>¡Hola, ${enrollment.nombres}!</h1>
-            
-            <div class="subtitle">
-              <img src="https://ct-jalapa-matriculas-2026.vercel.app/check.png" width="24" height="24" alt="Checkmark">
-              <span>Matrícula Registrada</span>
+            <div class="status-badge">
+              <img src="https://ct-jalapa-matriculas-2026.vercel.app/check.png" width="20" height="20" alt="Check"> Matrícula Registrada
             </div>
-
-            <p>Hemos recibido tu solicitud de matrícula para la carrera de <strong>${enrollment.carreraTecnica}</strong> en el Centro Tecnológico de Jalapa.</p>
-            <p>Tu información ha sido registrada exitosamente. Un miembro de nuestro equipo se pondrá en contacto contigo a finales de enero para confirmar tu matrícula y orientarte sobre el inicio de clases.</p>
+            <p>Hemos recibido tu solicitud de matrícula para la carrera de <a href="#"><strong>${enrollment.carreraTecnica}</strong></a> en el Centro Tecnológico de Jalapa.</p>
+            <p>Tu información ha sido registrada exitosamente. Un miembro de nuestro equipo se pondrá en contacto contigo <strong>a finales de enero del 2026</strong> para confirmar tu matrícula y orientarte sobre el inicio de clases.</p>
             <p>¡Gracias por elegirnos para tu formación técnica!</p>
-            
-            <div class="contact-info">
-              <p>Para cualquier consulta, no dudes en contactarnos:</p>
-              <p>
-                <strong>Llamadas:</strong> 
-                <a href="tel:50584433992">8443-3992</a> | 
-                <a href="tel:50587043761">8704-3761</a> | 
-                <a href="tel:50586151205">8615-1205</a>
+          </div>
+          <div class="footer">
+            <div class="signature">
+              <p>Atentamente,</p>
+              <p><strong>Equipo de Admisiones</strong></p>
+              <p>Centro Tecnológico de Jalapa</p>
+            </div>
+            <hr class="divider">
+            <div class="contact-help">
+              <h2>¿Necesitas ayuda? Contáctanos</h2>
+              <p class="phone-numbers">
+                <a href="tel:50584433992">84433992</a><span>|</span>
+                <a href="tel:50587043761">87043761</a><span>|</span>
+                <a href="tel:50586151205">86151205</a>
               </p>
             </div>
-
             <div class="social-links">
               <a href="https://www.facebook.com/CTJalapa" target="_blank"><img src="https://ct-jalapa-matriculas-2026.vercel.app/facebook.png" alt="Facebook"></a>
               <a href="https://www.instagram.com/centrotecjalapa/" target="_blank"><img src="https://ct-jalapa-matriculas-2026.vercel.app/instagram.png" alt="Instagram"></a>
               <a href="http://wa.me/50584433992" target="_blank"><img src="https://ct-jalapa-matriculas-2026.vercel.app/whatsapp.png" alt="WhatsApp"></a>
-            </div>
-
-            <hr>
-            <div class="footer">
-              <p>Atentamente,<br><strong>Equipo de Admisiones</strong><br>Centro Tecnológico de Jalapa</p>
             </div>
           </div>
         </div>
@@ -104,16 +113,16 @@ export async function sendConfirmationEmail(enrollment: Register) {
     </body>
     </html>
   `;
-  
-  sendSmtpEmail.sender = { 
-    name: 'Centro Tecnológico Jalapa', 
-    email: 'wgutierrezg@inatec.edu.ni' 
+
+  sendSmtpEmail.sender = {
+    name: "Centro Tecnológico Jalapa",
+    email: "wgutierrezg@inatec.edu.ni",
   };
 
   try {
     const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
-    console.log('Correo de confirmación enviado exitosamente. ID:', data.body);
+    console.log("Correo de confirmación enviado exitosamente. ID:", data.body);
   } catch (error) {
-    console.error('Error al enviar el correo de confirmación:', error);
+    console.error("Error al enviar el correo de confirmación:", error);
   }
 }
