@@ -70,7 +70,7 @@ export async function sendConfirmationEmail(enrollment: Register) {
             <h1>¡Hola, ${enrollment.nombres}!</h1>
             
             <div class="subtitle">
-              <img src="https://ct-jalapa-matriculas-2026-80iz0dgf3.vercel.app/check.png" width="24" height="24" alt="Checkmark">
+              <img src="https://ct-jalapa-matriculas-2026.vercel.app/check.png" width="24" height="24" alt="Checkmark">
               <span>Matrícula Registrada</span>
             </div>
 
@@ -89,9 +89,9 @@ export async function sendConfirmationEmail(enrollment: Register) {
             </div>
 
             <div class="social-links">
-              <a href="https://www.facebook.com/CTJalapa" target="_blank"><img src="https://ct-jalapa-matriculas-2026-80iz0dgf3.vercel.app/facebook.png" alt="Facebook"></a>
-              <a href="https://www.instagram.com/centrotecjalapa/" target="_blank"><img src="https://ct-jalapa-matriculas-2026-80iz0dgf3.vercel.app/instagram.png" alt="Instagram"></a>
-              <a href="http://wa.me/50584433992" target="_blank"><img src="https://ct-jalapa-matriculas-2026-80iz0dgf3.vercel.app/whatsapp.png" alt="WhatsApp"></a>
+              <a href="https://www.facebook.com/CTJalapa" target="_blank"><img src="https://ct-jalapa-matriculas-2026.vercel.app/facebook.png" alt="Facebook"></a>
+              <a href="https://www.instagram.com/centrotecjalapa/" target="_blank"><img src="https://ct-jalapa-matriculas-2026.vercel.app/instagram.png" alt="Instagram"></a>
+              <a href="http://wa.me/50584433992" target="_blank"><img src="https://ct-jalapa-matriculas-2026.vercel.app/whatsapp.png" alt="WhatsApp"></a>
             </div>
 
             <hr>
