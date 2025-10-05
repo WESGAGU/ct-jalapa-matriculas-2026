@@ -5,6 +5,7 @@ import type { Register } from './types';
 import prisma from './prisma';
 import cloudinary from './cloudinary';
 import { Prisma } from '@prisma/client';
+import { sendConfirmationEmail } from '@/lib/sendEmailBrevo'; // 1. Función importada
 
 console.log('use server');
 
@@ -123,6 +124,16 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
       data: createData,
     });
 
+    // 2. Llama a la función de envío de correo si hay un email
+    if (newEnrollment.email) {
+      // Usamos un try/catch para que un fallo en el envío de correo no detenga el proceso
+      try {
+        await sendConfirmationEmail(newEnrollment as Register);
+      } catch (emailError) {
+        console.error("La matrícula se guardó, pero falló el envío del correo de confirmación:", emailError);
+      }
+    }
+
     revalidatePath('/');
     revalidatePath(`/${newEnrollment.id}`);
     revalidatePath('/register');
@@ -143,26 +154,26 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
 }
 
 export async function getEnrollments(page = 1, limit = 5) {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const skip = (page - 1) * limit;
-    const [enrollments, total] = await Promise.all([
-        prisma.register.findMany({
-            skip,
-            take: limit,
-            orderBy: {
-                createdAt: 'desc',
-            },
-            include: {
-                user: {
-                    select: {
-                        name: true,
-                    },
-                },
-            },
-        }),
-        prisma.register.count(),
-    ]);
-    return { enrollments, total };
+  await new Promise(resolve => setTimeout(resolve, 500));
+  const skip = (page - 1) * limit;
+  const [enrollments, total] = await Promise.all([
+      prisma.register.findMany({
+          skip,
+          take: limit,
+          orderBy: {
+              createdAt: 'desc',
+          },
+          include: {
+              user: {
+                  select: {
+                      name: true,
+                  },
+              },
+          },
+      }),
+      prisma.register.count(),
+  ]);
+  return { enrollments, total };
 }
 
 export async function getEnrollmentById(id: string) {
@@ -292,7 +303,7 @@ export async function getEnrollmentStats() {
     enrollmentsByMunicipalityRaw,
     enrollmentsByAcademicLevelRaw,
     allEnrollmentsForAge,
-    allCareers, // ✨ 1. Obtener todas las carreras
+    allCareers,
   ] = await Promise.all([
     prisma.register.count(),
     prisma.register.groupBy({
@@ -311,7 +322,7 @@ export async function getEnrollmentStats() {
       orderBy: { _count: { nivelAcademico: 'desc' } },
     }),
     prisma.register.findMany({ select: { birthDate: true } }),
-    prisma.career.findMany({ select: { name: true, shift: true } }), // ✨ 1. (continuación)
+    prisma.career.findMany({ select: { name: true, shift: true } }),
   ]);
 
   const now = new Date();
@@ -332,14 +343,12 @@ export async function getEnrollmentStats() {
     })
   );
   
-  // ✨ 2. Mapear las carreras a un objeto para fácil acceso
   const careersMap = new Map(allCareers.map(c => [c.name, c.shift]));
 
-  // ✨ 3. Enriquecer los datos de matrículas con el turno correspondiente
   const enrollmentsByCareer = enrollmentsByCareerRaw.map(item => ({
     name: item.carreraTecnica,
     total: item._count.carreraTecnica,
-    shift: careersMap.get(item.carreraTecnica) || 'DESCONOCIDO', // Agregar turno
+    shift: careersMap.get(item.carreraTecnica) || 'DESCONOCIDO',
   }));
 
   const enrollmentsByMunicipality = enrollmentsByMunicipalityRaw.map(item => ({
@@ -352,7 +361,6 @@ export async function getEnrollmentStats() {
     total: item._count.nivelAcademico,
   }));
 
-  // Calcular distribución por edad
   const ageRanges = {
     '14-17': 0,
     '18-21': 0,
