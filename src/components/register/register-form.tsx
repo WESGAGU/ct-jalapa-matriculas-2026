@@ -1,3 +1,5 @@
+// src/components/register/register-form.tsx
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -52,15 +54,7 @@ import { es } from "date-fns/locale";
 import type SignatureCanvas from "react-signature-canvas";
 import { useTheme } from "next-themes";
 import { ImageDropzone } from "../ui/image-dropzone";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogContent,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription,
-} from "@/components/ui/alert-dialog";
+import Swal from 'sweetalert2';
 import dynamic from "next/dynamic";
 import { Career, Register as PrismaRegister } from "@prisma/client";
 import { FaRegAddressCard, FaRegCreditCard, FaFileAlt } from "react-icons/fa";
@@ -139,7 +133,6 @@ const formSchema = z
     nivelAcademico: z.string().min(1, "El nivel académico es obligatorio."),
 
     // Section II
-    // permanece requerido en el esquema (frontend/validación)
     carreraTecnica: z.string({
       required_error: "Debe seleccionar una carrera.",
     }),
@@ -243,29 +236,6 @@ interface RegisterFormProps {
   user?: User;
 }
 
-const CheckCircleIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    xmlns="http://www.w3.org/2000/svg"
-    width="64"
-    height="64"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <circle cx="12" cy="12" r="10" className="text-green-500 fill-current" />
-    <path
-      d="m9 12 2 2 4-4"
-      className="text-white"
-      stroke="white"
-      strokeWidth="2.5"
-    />
-  </svg>
-);
-
 export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -328,6 +298,11 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
         ? new Date(enrollment.birthDate)
         : (enrollment.birthDate as Date);
 
+    if(date) {
+      setIsUnderage(!isAtLeast14YearsOld(date));
+      setHasBirthDate(true);
+    }
+
     return {
       ...emptyDefaults,
       nombres: enrollment.nombres ?? "",
@@ -370,10 +345,11 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
     form.reset(computedDefaults);
   }, [computedDefaults, form]);
 
-  const hasCedulaSelected = form.watch("hasCedula") === "si";
-  const finishedBachSelected = form.watch("finishedBachillerato") === "si";
-  const birthDateValue = form.watch("birthDate");
-  const carreraValue = form.watch("carreraTecnica");
+  const { watch, setValue } = form;
+  const hasCedulaSelected = watch("hasCedula") === "si";
+  const finishedBachSelected = watch("finishedBachillerato") === "si";
+  const birthDateValue = watch("birthDate");
+  const carreraValue = watch("carreraTecnica");
 
   useEffect(() => {
     if (birthDateValue) {
@@ -382,7 +358,7 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
       setHasBirthDate(true);
 
       if (underage && carreraValue) {
-        form.setValue("carreraTecnica", "");
+        setValue("carreraTecnica", "");
         toast({
           variant: "destructive",
           title: "Edad insuficiente",
@@ -393,9 +369,7 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
       setIsUnderage(false);
       setHasBirthDate(false);
     }
-  }, [birthDateValue, form, carreraValue, toast]);
-
-  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+  }, [birthDateValue, setValue, carreraValue, toast]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -430,79 +404,37 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
 
     const { hasCedula, finishedBachillerato, ...rest } = data;
 
-    const cedulaFrente =
-      rest.cedulaFileFrente instanceof File
-        ? await fileToDataUri(rest.cedulaFileFrente)
-        : (enrollment as Register)?.cedulaFileFrente || undefined;
-    const cedulaReverso =
-      rest.cedulaFileReverso instanceof File
-        ? await fileToDataUri(rest.cedulaFileReverso)
-        : (enrollment as Register)?.cedulaFileReverso || undefined;
-    const diploma =
-      rest.diplomaFile instanceof File
-        ? await fileToDataUri(rest.diplomaFile)
-        : (enrollment as Register)?.diplomaFile || undefined;
-
-    const birthCertificate =
-      rest.birthCertificateFile instanceof File
-        ? await fileToDataUri(rest.birthCertificateFile)
-        : (enrollment as Register)?.birthCertificateFile || undefined;
-
-    const gradesCertificate =
-      rest.gradesCertificateFile instanceof File
-        ? await fileToDataUri(rest.gradesCertificateFile)
-        : (enrollment as Register)?.gradesCertificateFile || undefined;
+    const [cedulaFrente, cedulaReverso, diploma, birthCertificate, gradesCertificate] = await Promise.all([
+      rest.cedulaFileFrente instanceof File ? fileToDataUri(rest.cedulaFileFrente) : (enrollment as Register)?.cedulaFileFrente,
+      rest.cedulaFileReverso instanceof File ? fileToDataUri(rest.cedulaFileReverso) : (enrollment as Register)?.cedulaFileReverso,
+      rest.diplomaFile instanceof File ? fileToDataUri(rest.diplomaFile) : (enrollment as Register)?.diplomaFile,
+      rest.birthCertificateFile instanceof File ? fileToDataUri(rest.birthCertificateFile) : (enrollment as Register)?.birthCertificateFile,
+      rest.gradesCertificateFile instanceof File ? fileToDataUri(rest.gradesCertificateFile) : (enrollment as Register)?.gradesCertificateFile,
+    ]);
 
     const enrollmentData: Register = {
         id: isEditMode && enrollment ? enrollment.id : crypto.randomUUID(),
-        nombres: rest.nombres,
-        apellidos: rest.apellidos,
-        birthDate: rest.birthDate,
-        gender: rest.gender,
-        estadoCivil: rest.estadoCivil,
+        ...rest,
+        birthDate: rest.birthDate as Date,
         cedula: typeof rest.cedula === "string" ? (rest.cedula.trim() || undefined) : undefined,
-        municipioNacimiento: rest.municipioNacimiento,
-        deptoDomiciliar: rest.deptoDomiciliar,
-        municipioDomiciliar: rest.municipioDomiciliar,
-        comunidad: rest.comunidad,
-        direccion: rest.direccion,
-        numPersonasHogar: Number(rest.numPersonasHogar),
-        telefonoCelular: rest.telefonoCelular,
         email: typeof rest.email === "string" ? (rest.email.trim() || undefined) : undefined,
-        nivelAcademico: rest.nivelAcademico,
-        carreraTecnica: rest.carreraTecnica,
-        nombreEmergencia: rest.nombreEmergencia,
-        parentescoEmergencia: rest.parentescoEmergencia,
-        telefonoEmergencia: rest.telefonoEmergencia,
-        direccionParentesco: rest.direccionParentesco,
-        createdAt:
-          isEditMode && enrollment ? new Date(enrollment.createdAt) : new Date(),
+        numPersonasHogar: Number(rest.numPersonasHogar),
+        createdAt: isEditMode && enrollment ? new Date(enrollment.createdAt) : new Date(),
         updatedAt: new Date(),
         cedulaFileFrente: hasCedula === "si" ? cedulaFrente : undefined,
         cedulaFileReverso: hasCedula === "si" ? cedulaReverso : undefined,
         birthCertificateFile: hasCedula === "no" ? birthCertificate : undefined,
         diplomaFile: finishedBachillerato === "si" ? diploma : undefined,
-        gradesCertificateFile:
-          finishedBachillerato === "no" ? gradesCertificate : undefined,
-        firmaProtagonista: sigCanvas.current?.isEmpty()
-          ? (enrollment as Register)?.firmaProtagonista || undefined
-          : sigCanvas.current?.toDataURL("image/png"),
+        gradesCertificateFile: finishedBachillerato === "no" ? gradesCertificate : undefined,
+        firmaProtagonista: sigCanvas.current?.isEmpty() ? (enrollment as Register)?.firmaProtagonista : sigCanvas.current?.toDataURL("image/png"),
         userId: enrollment ? (enrollment as PrismaRegister).userId : user?.id || null,
         user: enrollment ? (enrollment as Register).user : { name: user?.name || null },
       };
-      
 
     if (!isUnderage) {
       if (!enrollmentData.carreraTecnica || String(enrollmentData.carreraTecnica).trim() === "") {
-        form.setError("carreraTecnica", {
-          type: "manual",
-          message: "Debe seleccionar una carrera técnica.",
-        });
-        toast({
-          variant: "destructive",
-          title: "Falta seleccionar carrera",
-          description: "Por favor seleccione la carrera técnica que desea estudiar.",
-        });
+        form.setError("carreraTecnica", { type: "manual", message: "Debe seleccionar una carrera técnica." });
+        toast({ variant: "destructive", title: "Falta seleccionar carrera", description: "Por favor seleccione la carrera técnica que desea estudiar." });
         setIsSubmitting(false);
         return;
       }
@@ -515,71 +447,62 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
         } else {
           await addEnrollment(enrollmentData, user?.id);
         }
-        setShowSuccessAlert(true);
       } else {
         if (isEditMode && enrollment) {
           updatePendingEnrollment(enrollmentData);
         } else {
           savePendingEnrollment(enrollmentData);
         }
-        toast({
-          title: "Guardado Localmente",
-          description:
-            "La matrícula se guardó y se sincronizará cuando haya conexión.",
-        });
-        router.push("/");
-        router.refresh();
       }
+
+      Swal.fire({
+        title: isEditMode ? '¡Matrícula Actualizada!' : '¡Matrícula Exitosa!',
+        text: isEditMode ? `El registro de ${enrollmentData.nombres} ha sido actualizado.` : `Tu registro para ${enrollmentData.carreraTecnica} ha sido enviado correctamente.`,
+        icon: 'success',
+        confirmButtonColor: '#3085d6',
+        confirmButtonText: 'Entendido'
+      }).then(() => {
+        router.push('/');
+        router.refresh();
+      });
+
+      if (!isEditMode) {
+        form.reset(emptyDefaults);
+        clearSignature();
+      }
+
     } catch (error: unknown) {
       console.error("Form submission error:", error);
       const message = error instanceof Error ? error.message : String(error);
 
+      Swal.fire({
+        title: 'Error en el Envío',
+        text: message || `No se pudo ${isEditMode ? "actualizar" : "guardar"} la matrícula.`,
+        icon: 'error',
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Intentar de nuevo'
+      });
+
       if (/c[eé]dula/i.test(message)) {
         form.setError("cedula", { type: "manual", message });
-        toast({
-          variant: "destructive",
-          title: "Cédula duplicada",
-          description: message,
-        });
       } else if (/correo|email|correo electrónico|correo-electr[oó]nico/i.test(message)) {
         form.setError("email", { type: "manual", message });
-        toast({
-          variant: "destructive",
-          title: "Correo duplicado",
-          description: message,
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: `No se pudo ${isEditMode ? "actualizar" : "guardar"} la matrícula.`,
-        });
       }
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  const handleAlertClose = () => {
-    setShowSuccessAlert(false);
-    router.push("/");
-    router.refresh();
-  };
-
   const formGridClass = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4";
 
-  const groupCareersByShift = (careers: Career[]) => {
-    return careers.reduce((acc, career) => {
-      const shift = career.shift;
-      if (!acc[shift]) {
-        acc[shift] = [];
-      }
-      acc[shift].push(career);
-      return acc;
-    }, {} as Record<string, Career[]>);
-  };
-
-  const groupedCareers = groupCareersByShift(careers);
+  const groupedCareers = careers.reduce((acc, career) => {
+    const shift = career.shift;
+    if (!acc[shift]) {
+      acc[shift] = [];
+    }
+    acc[shift].push(career);
+    return acc;
+  }, {} as Record<string, Career[]>);
 
   return (
     <>
@@ -1162,23 +1085,6 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
           </div>
         </form>
       </Form>
-
-      <AlertDialog open={showSuccessAlert} onOpenChange={setShowSuccessAlert}>
-        <AlertDialogContent className="text-center">
-          <AlertDialogHeader>
-            <div className="flex justify-center">
-              <CheckCircleIcon />
-            </div>
-            <AlertDialogTitle className="mt-4 text-2xl">¡Éxito!</AlertDialogTitle>
-            <AlertDialogDescription>
-              La matrícula ha sido {isEditMode ? "actualizada" : "guardada"} correctamente en el servidor.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="sm:justify-center">
-            <AlertDialogAction onClick={handleAlertClose}>Aceptar</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }

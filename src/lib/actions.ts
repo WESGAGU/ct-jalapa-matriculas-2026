@@ -1,3 +1,5 @@
+// src/lib/actions.ts
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -5,17 +7,12 @@ import type { Register } from './types';
 import prisma from './prisma';
 import cloudinary from './cloudinary';
 import { Prisma } from '@prisma/client';
-import { sendConfirmationEmail } from '@/lib/sendEmailBrevo'; // 1. Función importada
+import { sendConfirmationEmail } from '@/lib/sendEmailBrevo';
 
 console.log('use server');
 
 // --- Helper Functions for Cloudinary ---
 
-/**
- * Extracts the public ID from a Cloudinary URL.
- * @param url The Cloudinary URL
- * @returns The public ID (e.g., 'folder/image_id')
- */
 function getPublicIdFromUrl(url: string | undefined | null): string | null {
   if (!url || !url.includes('cloudinary.com')) return null;
   try {
@@ -33,30 +30,15 @@ function getPublicIdFromUrl(url: string | undefined | null): string | null {
   }
 }
 
-/**
- * Deletes an image from Cloudinary using its public ID.
- * @param publicId The public ID of the image to delete.
- */
-async function deleteImage(publicId: string | null) {
-  if (!publicId) return;
-  try {
-    await cloudinary.uploader.destroy(publicId);
-  } catch (error) {
-    console.error(`Failed to delete image ${publicId} from Cloudinary:`, error);
-    // Do not re-throw to avoid blocking the main database operation
-  }
-}
-
-
-async function uploadImage(dataUri: string | undefined | null) {
+async function uploadImage(dataUri: string | undefined | null): Promise<{ url: string | null; publicId: string | null }> {
   if (!dataUri || !dataUri.startsWith('data:image')) {
-    return dataUri;
+    return { url: dataUri || null, publicId: null };
   }
   try {
     const result = await cloudinary.uploader.upload(dataUri, {
       folder: 'enrollments',
     });
-    return result.secure_url;
+    return { url: result.secure_url, publicId: result.public_id };
   } catch (error) {
     console.error('Cloudinary upload failed:', error);
     throw new Error('Failed to upload image to Cloudinary.');
@@ -67,7 +49,7 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
   await new Promise(resolve => setTimeout(resolve, 1000));
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { id, user: _user, ...rest } = enrollment;
+  const { id, user: _user, userId: _userId, ...rest } = enrollment;
 
   if (typeof rest.cedula === 'string' && rest.cedula.trim() === '') {
     rest.cedula = null;
@@ -76,6 +58,7 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
     rest.email = null;
   }
 
+  // 1. Pre-check for duplicates before any uploads
   const checks: Prisma.RegisterWhereInput[] = [];
   if (rest.cedula && typeof rest.cedula === 'string' && rest.cedula.trim() !== '') {
     checks.push({ cedula: rest.cedula });
@@ -99,34 +82,46 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
     }
   }
 
-  const cedulaFrenteUrl = await uploadImage(rest.cedulaFileFrente);
-  const cedulaReversoUrl = await uploadImage(rest.cedulaFileReverso);
-  const birthCertificateUrl = await uploadImage(rest.birthCertificateFile);
-  const diplomaUrl = await uploadImage(rest.diplomaFile);
-  const gradesCertificateUrl = await uploadImage(rest.gradesCertificateFile);
-  const firmaUrl = await uploadImage(rest.firmaProtagonista);
-
-  const createData: Prisma.RegisterCreateInput = {
-    ...rest,
-    id,
-    birthDate: new Date(enrollment.birthDate),
-    cedulaFileFrente: cedulaFrenteUrl,
-    cedulaFileReverso: cedulaReversoUrl,
-    birthCertificateFile: birthCertificateUrl,
-    diplomaFile: diplomaUrl,
-    gradesCertificateFile: gradesCertificateUrl,
-    firmaProtagonista: firmaUrl,
-    user: userId ? { connect: { id: userId } } : undefined,
-  };
+  const uploadedImagePublicIds: string[] = [];
 
   try {
-    const newEnrollment = await prisma.register.create({
-      data: createData,
-    });
+    // Helper to upload and track public IDs
+    const uploadAndTrack = async (dataUri: string | undefined | null) => {
+      if (!dataUri || !dataUri.startsWith('data:image')) {
+        return dataUri;
+      }
+      const { url, publicId } = await uploadImage(dataUri);
+      if (publicId) {
+        uploadedImagePublicIds.push(publicId);
+      }
+      return url;
+    };
+    
+    // 2. Upload images and get URLs
+    const cedulaFrenteUrl = await uploadAndTrack(rest.cedulaFileFrente);
+    const cedulaReversoUrl = await uploadAndTrack(rest.cedulaFileReverso);
+    const birthCertificateUrl = await uploadAndTrack(rest.birthCertificateFile);
+    const diplomaUrl = await uploadAndTrack(rest.diplomaFile);
+    const gradesCertificateUrl = await uploadAndTrack(rest.gradesCertificateFile);
+    const firmaUrl = await uploadAndTrack(rest.firmaProtagonista);
 
-    // 2. Llama a la función de envío de correo si hay un email
+    const createData: Prisma.RegisterCreateInput = {
+      ...rest,
+      id,
+      birthDate: new Date(enrollment.birthDate),
+      cedulaFileFrente: cedulaFrenteUrl,
+      cedulaFileReverso: cedulaReversoUrl,
+      birthCertificateFile: birthCertificateUrl,
+      diplomaFile: diplomaUrl,
+      gradesCertificateFile: gradesCertificateUrl,
+      firmaProtagonista: firmaUrl,
+      user: userId ? { connect: { id: userId } } : undefined,
+    };
+
+    const newEnrollment = await prisma.register.create({ data: createData });
+
+    // Send confirmation email
     if (newEnrollment.email) {
-      // Usamos un try/catch para que un fallo en el envío de correo no detenga el proceso
       try {
         await sendConfirmationEmail(newEnrollment as Register);
       } catch (emailError) {
@@ -140,6 +135,14 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
     return newEnrollment;
 
   } catch (error) {
+    // Rollback: Delete uploaded images if an error occurred
+    if (uploadedImagePublicIds.length > 0) {
+      console.log(`Error during database operation. Deleting ${uploadedImagePublicIds.length} uploaded images...`);
+      // Use destroy for multiple deletions
+      await cloudinary.api.delete_resources(uploadedImagePublicIds);
+    }
+
+    // Handle specific Prisma errors and re-throw
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       const target = (error.meta?.target as string[]) || [];
       if (target.includes('cedula')) {
@@ -225,14 +228,23 @@ export async function updateEnrollment(id: string, data: Partial<Omit<Register, 
     'gradesCertificateFile',
     'firmaProtagonista',
   ];
+  
+  const newlyUploadedPublicIds: string[] = [];
+  const publicIdsToDelete: string[] = [];
 
   for (const field of imageFields) {
     const newValue = data[field];
     const oldValue = existingEnrollment[field];
 
     if (typeof newValue === 'string' && newValue.startsWith('data:image')) {
-      await deleteImage(getPublicIdFromUrl(oldValue as string | null));
-      updateData[field] = await uploadImage(newValue);
+      if (oldValue) {
+        const publicId = getPublicIdFromUrl(oldValue);
+        if (publicId) publicIdsToDelete.push(publicId);
+      }
+      
+      const { url, publicId } = await uploadImage(newValue);
+      updateData[field] = url;
+      if (publicId) newlyUploadedPublicIds.push(publicId);
     }
   }
 
@@ -243,15 +255,29 @@ export async function updateEnrollment(id: string, data: Partial<Omit<Register, 
     updateData.email = null;
   }
 
-  const updatedEnrollment = await prisma.register.update({
-    where: { id },
-    data: updateData,
-  });
+  try {
+    const updatedEnrollment = await prisma.register.update({
+      where: { id },
+      data: updateData,
+    });
+    
+    // If update is successful, delete old images
+    if (publicIdsToDelete.length > 0) {
+      await cloudinary.api.delete_resources(publicIdsToDelete);
+    }
 
-  revalidatePath('/');
-  revalidatePath(`/${id}`);
-  revalidatePath('/register');
-  return updatedEnrollment;
+    revalidatePath('/');
+    revalidatePath(`/${id}`);
+    revalidatePath('/register');
+    return updatedEnrollment;
+
+  } catch (error) {
+      // If update fails, delete newly uploaded images
+      if (newlyUploadedPublicIds.length > 0) {
+          await cloudinary.api.delete_resources(newlyUploadedPublicIds);
+      }
+      throw error; // Re-throw the original error
+  }
 }
 
 
@@ -266,10 +292,10 @@ export async function deleteEnrollment(id: string) {
       getPublicIdFromUrl(enrollmentToDelete.diplomaFile),
       getPublicIdFromUrl(enrollmentToDelete.gradesCertificateFile),
       getPublicIdFromUrl(enrollmentToDelete.firmaProtagonista),
-    ].filter(Boolean);
+    ].filter((id): id is string => id !== null);
 
     if (imagesToDelete.length > 0) {
-      await Promise.all(imagesToDelete.map(publicId => deleteImage(publicId as string)));
+      await cloudinary.api.delete_resources(imagesToDelete);
     }
   }
 
