@@ -40,7 +40,7 @@ import {
   getUsers,
 } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
-import { Register } from "@/lib/types";
+import { Register, User } from "@/lib/types"; // Asegúrate que User esté bien definido en types.ts
 import { getPendingEnrollments } from "@/lib/storage";
 import {
   DropdownMenu,
@@ -61,43 +61,76 @@ import { EnrollmentPDF } from "./print-sheet-register-estudent";
 import { PDFViewer, PDFDownloadLink } from "@react-pdf/renderer";
 import Swal from "sweetalert2";
 import { Career, Shift } from "@prisma/client";
+import { useCurrentUser } from "@/hooks/use-current-user"; // <<--- 1. IMPORTAR HOOK DE USUARIO
+
+// Define un tipo más completo para el usuario, incluyendo el rol
+type UserWithRole = User & {
+  role?: string;
+  id?: string;
+};
 
 const EnrollmentActions = ({
   enrollment,
   onDelete,
   onView,
+  currentUser, // <<--- 2. AÑADIR currentUser COMO PROP
 }: {
   enrollment: Register;
   onDelete: (id: string) => void;
   onView: (enrollment: Register) => void;
-}) => (
-  <DropdownMenu>
-    <DropdownMenuTrigger asChild>
-      <Button variant="ghost" size="icon">
-        <MoreHorizontal className="h-4 w-4" />
-        <span className="sr-only">Abrir menú</span>
-      </Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent align="end">
-      <DropdownMenuItem onClick={() => onView(enrollment)}>
-        <Eye className="mr-2 h-4 w-4" /> Ver
-      </DropdownMenuItem>
-      <DropdownMenuItem asChild>
-        <Link href={`/${enrollment.id}`} className="flex items-center w-full">
-          <Edit className="mr-2 h-4 w-4" /> Editar
-        </Link>
-      </DropdownMenuItem>
-      <DropdownMenuItem
-        onClick={() => onDelete(enrollment.id)}
-        className="text-destructive focus:text-destructive"
-      >
-        <Trash2 className="mr-2 h-4 w-4" /> Borrar
-      </DropdownMenuItem>
-    </DropdownMenuContent>
-  </DropdownMenu>
-);
+  currentUser: UserWithRole | null; // <<--- TIPO PARA currentUser
+}) => {
+  // --- LÓGICA DE PERMISOS ---
+  const isAdmin = currentUser?.role === "ADMIN";
+  const isOwner = currentUser?.id === enrollment.userId;
+  
+  // El usuario puede editar/eliminar si:
+  // 1. Es un administrador (puede hacer todo).
+  // 2. O, si el registro le pertenece (userId coincide).
+  const canEditDelete = isAdmin || isOwner;
+
+  // Lógica específica para registros con userId === null
+  // Solo el admin puede gestionar estos.
+  const canManageUnassigned = isAdmin && enrollment.userId === null;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon">
+          <MoreHorizontal className="h-4 w-4" />
+          <span className="sr-only">Abrir menú</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {/* La acción de "Ver" está disponible para todos */}
+        <DropdownMenuItem onClick={() => onView(enrollment)}>
+          <Eye className="mr-2 h-4 w-4" /> Ver
+        </DropdownMenuItem>
+
+        {/* --- 3. RENDERIZADO CONDICIONAL DE ACCIONES --- */}
+        {(canEditDelete || canManageUnassigned) && (
+          <>
+            <DropdownMenuItem asChild>
+              <Link href={`/${enrollment.id}`} className="flex items-center w-full">
+                <Edit className="mr-2 h-4 w-4" /> Editar
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onDelete(enrollment.id)}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="mr-2 h-4 w-4" /> Borrar
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
 
 export default function RegisterList() {
+  const { user: currentUser, isLoading: isUserLoading } = useCurrentUser(); // <<--- 4. OBTENER USUARIO ACTUAL
   const [enrollments, setEnrollments] = useState<Register[]>([]);
   const [pendingEnrollments, setPendingEnrollments] = useState<Register[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -162,7 +195,6 @@ export default function RegisterList() {
 
   useEffect(() => {
     setIsClient(true);
-    // La carga inicial se maneja con el botón de búsqueda para evitar cargas múltiples
   }, []);
 
   useEffect(() => {
@@ -178,7 +210,6 @@ export default function RegisterList() {
   }, [loadAllData, currentPage, searchDate, searchUser, searchCareer]);
 
   useEffect(() => {
-    // Cargar datos cuando la página o los filtros cambian
     if (isClient) {
       loadAllData(currentPage, {
         date: searchDate,
@@ -247,8 +278,6 @@ export default function RegisterList() {
   };
 
   const allEnrollments = useMemo(() => {
-    // La lógica de filtrado ahora se maneja principalmente en el backend
-    // El frontend solo combina los resultados
     return [...pendingEnrollments, ...enrollments];
   }, [pendingEnrollments, enrollments]);
 
@@ -277,7 +306,7 @@ export default function RegisterList() {
     setCurrentPage((prev) => Math.min(prev + 1, totalPages));
   };
 
-  if (isLoading && !isClient) {
+  if ((isLoading && !isClient) || isUserLoading) { // <<--- 5. MEJORAR LA CONDICIÓN DE CARGA
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-full" />
@@ -290,6 +319,7 @@ export default function RegisterList() {
 
   return (
     <div className="space-y-6">
+      {/* ... (código de filtros sin cambios) ... */}
       <Card>
         <CardHeader>
           <CardTitle>Filtros de Búsqueda</CardTitle>
@@ -395,7 +425,7 @@ export default function RegisterList() {
                         {new Date(enrollment.createdAt).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
-                        {enrollment.user?.name || "Estudiante en Línea"}
+                        {enrollment.user?.name || "Público"}
                       </TableCell>
                       <TableCell>
                         {pendingEnrollments.some(
@@ -417,10 +447,12 @@ export default function RegisterList() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
+                        {/* 6. PASAR currentUser AL COMPONENTE DE ACCIONES */}
                         <EnrollmentActions
                           enrollment={enrollment}
                           onDelete={handleDelete}
                           onView={setEnrollmentToView}
+                          currentUser={currentUser}
                         />
                       </TableCell>
                     </TableRow>
@@ -449,6 +481,7 @@ export default function RegisterList() {
         </Card>
       </div>
 
+      {/* ... (código de la vista móvil sin cambios, pero pasando currentUser) ... */}
       <div className="md:hidden space-y-4">
         <h2 className="text-xl font-bold">
           Matrículas Registradas ({totalEnrollments})
@@ -471,6 +504,7 @@ export default function RegisterList() {
                     enrollment={enrollment}
                     onDelete={handleDelete}
                     onView={setEnrollmentToView}
+                    currentUser={currentUser} // <<--- 6. PASAR currentUser TAMBIÉN AQUÍ
                   />
                 </div>
               </CardHeader>
@@ -489,7 +523,7 @@ export default function RegisterList() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Registrado por:</span>
-                  <span>{enrollment.user?.name || "Estudiante en Línea"}</span>
+                  <span>{enrollment.user?.name || "Público"}</span>
                 </div>
                 <div className="flex justify-between items-center pt-2">
                   <span className="text-muted-foreground">Estado:</span>
@@ -532,6 +566,7 @@ export default function RegisterList() {
         </div>
       </div>
 
+      {/* ... (código del Dialog sin cambios) ... */}
       <Dialog
         open={!!enrollmentToView}
         onOpenChange={(open) => !open && setEnrollmentToView(null)}

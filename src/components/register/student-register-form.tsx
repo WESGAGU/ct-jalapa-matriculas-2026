@@ -253,7 +253,7 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
 
   const sigCanvas = useRef<SignatureCanvas>(null);
   const isEditMode = !!enrollment;
-  const signatureColor = resolvedTheme === "dark" ? "white" : "black";
+  const signatureColor = "black"; // <-- ❗ CAMBIO 1: Color de la firma siempre negro
 
   const emptyDefaults: Partial<RegisterFormValues> = useMemo(() => ({
     nombres: "",
@@ -1055,9 +1055,9 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                       // @ts-expect-error: 'ref' is not a valid prop for this component.
                       ref={sigCanvas}
                       penColor={signatureColor}
-                      canvasProps={{ className: "w-full h-full rounded-md" }}
+                      canvasProps={{ className: "w-full h-full rounded-md bg-white dark:bg-gray-900" }} // <-- ❗ CAMBIO 2: Fondo siempre blanco
                     />
-                    <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1" onClick={clearSignature}>
+                    <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 dark:text-white" onClick={clearSignature}>
                       <RefreshCw className="h-4 w-4" />
                     </Button>
                   </div>

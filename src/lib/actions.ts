@@ -167,13 +167,23 @@ export async function getEnrollments(
   const where: Prisma.RegisterWhereInput = {};
 
   if (filters.date) {
-    const date = new Date(filters.date);
-    const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
+    // --- INICIO DE LA CORRECCIÓN DE FECHA ---
+    // El string filters.date viene en formato "YYYY-MM-DD".
+    // Dividirlo previene problemas de zona horaria, creando la fecha en la zona horaria local del servidor.
+    const [year, month, day] = filters.date.split('-').map(Number);
+
+    // Creamos la fecha de inicio a las 00:00 del día seleccionado.
+    // El mes en el constructor de Date es 0-indexado (0=Enero), por eso restamos 1.
+    const startOfDay = new Date(year, month - 1, day);
+
+    // Creamos la fecha de fin para que sea el inicio del día siguiente.
+    const endOfDay = new Date(year, month - 1, day + 1);
+
     where.createdAt = {
-      gte: startOfDay,
-      lt: endOfDay,
+      gte: startOfDay, // Mayor o igual que el inicio del día seleccionado.
+      lt: endOfDay,    // Menor que el inicio del día siguiente.
     };
+    // --- FIN DE LA CORRECCIÓN DE FECHA ---
   }
 
   if (filters.user) {
