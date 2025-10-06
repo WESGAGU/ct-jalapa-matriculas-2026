@@ -1041,7 +1041,7 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                     )}
 
                     <FormDescription>
-                      De no haber culminado los estudios de bachillerato, adjunte el certificado de notas del tercer año. En caso de haberlos finalizado, Adjunte su diploma de grado.  (fotografia)
+                      Adjunte su diploma de bachillerato. En caso de no haber culminado la secundaria, adjunte el certificado de notas de 7°, 8° y 9° grado (fotografía).
                     </FormDescription>
                   </div>
                 </div>

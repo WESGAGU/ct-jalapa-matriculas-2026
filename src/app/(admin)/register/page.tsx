@@ -16,11 +16,10 @@ export default function RegisterPage() {
           </Link>
         </Button>
       </div>
-      <Card>
-        <CardContent className="mt-10">
-          <RegisterList />
-        </CardContent>
-      </Card>
+
+      <div className="mt-10">
+         <RegisterList />
+      </div>
     </div>
   );
 }

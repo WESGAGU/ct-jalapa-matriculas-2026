@@ -156,25 +156,60 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
   }
 }
 
-export async function getEnrollments(page = 1, limit = 5) {
-  await new Promise(resolve => setTimeout(resolve, 500));
+export async function getEnrollments(
+  page = 1,
+  limit = 5,
+  filters: { date?: string; user?: string; career?: string } = {}
+) {
+  await new Promise((resolve) => setTimeout(resolve, 500));
   const skip = (page - 1) * limit;
+
+  const where: Prisma.RegisterWhereInput = {};
+
+  if (filters.date) {
+    const date = new Date(filters.date);
+    const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
+    where.createdAt = {
+      gte: startOfDay,
+      lt: endOfDay,
+    };
+  }
+
+  if (filters.user) {
+    where.user = {
+      name: {
+        contains: filters.user,
+        mode: 'insensitive',
+      },
+    };
+  }
+
+  if (filters.career) {
+    where.carreraTecnica = {
+      contains: filters.career,
+      mode: 'insensitive',
+    };
+  }
+
+
   const [enrollments, total] = await Promise.all([
-      prisma.register.findMany({
-          skip,
-          take: limit,
-          orderBy: {
-              createdAt: 'desc',
+    prisma.register.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: {
+        createdAt: "desc",
+      },
+      include: {
+        user: {
+          select: {
+            name: true,
           },
-          include: {
-              user: {
-                  select: {
-                      name: true,
-                  },
-              },
-          },
-      }),
-      prisma.register.count(),
+        },
+      },
+    }),
+    prisma.register.count({ where }),
   ]);
   return { enrollments, total };
 }
@@ -426,4 +461,22 @@ export async function getCareers() {
     where: { active: true },
     orderBy: { name: 'asc' },
   });
+}
+
+export async function getUsers() {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
+    return users;
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    return [];
+  }
 }
