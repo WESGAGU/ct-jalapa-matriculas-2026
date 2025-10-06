@@ -140,13 +140,13 @@ const faqData = [
             <span role="img" aria-label="emoji" className="mr-2">
               💻
             </span>
-            Los técnicos Generales en Computación, Administración y Contabilidad tienen una duración de 2 semestres la cual equivale a un año de etudio.  
+            Los técnicos Generales en Computación, Administración y Contabilidad tienen una duración de 2 semestres la cual equivale a 1 año.  
           </li>
           <li className="flex items-center">
             <span role="img" aria-label="emoji" className="mr-2">
               💉
             </span>
-            Técnico General en Veterinaria, tiene una duración de 3 semestres, equivalente a 1 año y medio.
+            Técnico General en Veterinaria, tiene una duración de 4 semestres, equivalente a 2 años.
           </li>
           <li className="flex items-center">
             <span role="img" aria-label="emoji" className="mr-2">
@@ -161,19 +161,19 @@ const faqData = [
             <span role="img" aria-label="emoji" className="mr-2">
               👩‍🌾
             </span>
-            Técnico General en Zootecnia, tiene una duración de 3 semestres, equivalente a 1 año y medio.
+            Técnico General en Zootecnia, tiene una duración de 6 semestres, equivalente a 3 años.
           </li>
           <li className="flex items-center">
             <span role="img" aria-label="emoji" className="mr-2">
               🌱
             </span>
-            Técnico General en Agronomía, tiene una duración de 4 semestres, equivalente a 2 años.
+            Técnico General en Agronomía, tiene una duración de 6 semestres, equivalente a 3 años.
           </li>
           <li className="flex items-center">
             <span role="img" aria-label="emoji" className="mr-2">
               💧
             </span>
-            Técnico General en Riego Agricola, tiene una duración de 2 semestres, equivalente a 1 año.
+            Técnico General en Riego Agricola, tiene una duración de 4 semestres, equivalente a 2 años.
           </li>
         </ul>
         <p className="font-semibold mt-4">Turno Dominical</p>
@@ -194,13 +194,13 @@ const faqData = [
             <span role="img" aria-label="emoji" className="mr-2">
               👩‍🌾
             </span>
-            Técnico General en Zootecnia, tiene una duración de 3 semestres, equivalente a 1 año y medio.
+            Técnico General en Zootecnia, tiene una duración de 6 semestres, equivalente a 3 años.
           </li>
           <li className="flex items-center">
             <span role="img" aria-label="emoji" className="mr-2">
               🌱
             </span>
-            Técnico General en Agronomia, tiene una duración de 4 semestres, equivalente a 2 años.
+            Técnico General en Agronomia, tiene una duración de 6 semestres, equivalente a 3 años.
           </li>
         </ul>
       </div>
