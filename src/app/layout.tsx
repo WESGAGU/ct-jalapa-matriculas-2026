@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster';
 import SyncStatus from '@/components/sync-status';
 import { ThemeProvider } from '@/components/theme-provider';
+import { Analytics } from "@vercel/analytics/next"
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
@@ -33,6 +34,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {/* Aquí solo deben estar los hijos y los proveedores globales */}
+          <Analytics/>
           {children}
           <Toaster />
           <SyncStatus />
