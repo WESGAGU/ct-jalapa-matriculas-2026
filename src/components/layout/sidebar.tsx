@@ -1,4 +1,4 @@
-'use client';
+// src/components/layout/sidebar.tsx
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -8,6 +8,8 @@ import {
   GraduationCap,
   PanelLeftClose,
   PanelLeftOpen,
+  Users,
+  FileChartColumnIncreasing,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -16,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { useSidebar } from '@/hooks/use-sidebar';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
 
+// Definimos la lista de items del menú, incluyendo "Usuarios"
 export const menuItems = [
   {
     href: '/',
@@ -31,6 +34,16 @@ export const menuItems = [
     href: '/register',
     label: 'Ver Matrículas',
     icon: List,
+  },
+  {
+    href: '/reports', 
+    label: 'Reportes',
+    icon: FileChartColumnIncreasing ,
+  },
+  {
+    href: '/users', 
+    label: 'Usuarios',
+    icon: Users,
   },
 ];
 
