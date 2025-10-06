@@ -131,7 +131,7 @@ export default function SettingsPage() {
                     <Input {...field} />
                   </FormControl>
                   <FormDescription>
-                    No se permiten espacios. Intenta con `wesling.garcia` o `wesling2025`.
+                    No se permiten espacios. Intenta con `nombre.apellido` o `nombre2025`.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
