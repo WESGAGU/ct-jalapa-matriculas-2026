@@ -49,7 +49,7 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
   await new Promise(resolve => setTimeout(resolve, 1000));
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { id, user: _user, userId: _userId, ...rest } = enrollment;
+  const { id, user: _user, userId: _userId, career: _career, ...rest } = enrollment;
 
   if (typeof rest.cedula === 'string' && rest.cedula.trim() === '') {
     rest.cedula = null;
@@ -85,7 +85,6 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
   const uploadedImagePublicIds: string[] = [];
 
   try {
-    // Helper to upload and track public IDs
     const uploadAndTrack = async (dataUri: string | undefined | null) => {
       if (!dataUri || !dataUri.startsWith('data:image')) {
         return dataUri;
@@ -97,7 +96,6 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
       return url;
     };
     
-    // 2. Upload images and get URLs
     const cedulaFrenteUrl = await uploadAndTrack(rest.cedulaFileFrente);
     const cedulaReversoUrl = await uploadAndTrack(rest.cedulaFileReverso);
     const birthCertificateUrl = await uploadAndTrack(rest.birthCertificateFile);
@@ -116,11 +114,11 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
       gradesCertificateFile: gradesCertificateUrl,
       firmaProtagonista: firmaUrl,
       user: userId ? { connect: { id: userId } } : undefined,
+      career: { connect: { name: rest.carreraTecnica } },
     };
 
     const newEnrollment = await prisma.register.create({ data: createData });
 
-    // Send confirmation email
     if (newEnrollment.email) {
       try {
         await sendConfirmationEmail(newEnrollment as Register);
@@ -135,14 +133,11 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
     return newEnrollment;
 
   } catch (error) {
-    // Rollback: Delete uploaded images if an error occurred
     if (uploadedImagePublicIds.length > 0) {
       console.log(`Error during database operation. Deleting ${uploadedImagePublicIds.length} uploaded images...`);
-      // Use destroy for multiple deletions
       await cloudinary.api.delete_resources(uploadedImagePublicIds);
     }
 
-    // Handle specific Prisma errors and re-throw
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       const target = (error.meta?.target as string[]) || [];
       if (target.includes('cedula')) {
@@ -192,7 +187,6 @@ export async function getEnrollments(
     };
   }
 
-
   const [enrollments, total] = await Promise.all([
     prisma.register.findMany({
       where,
@@ -207,6 +201,7 @@ export async function getEnrollments(
             name: true,
           },
         },
+        career: true, // Incluye la relación
       },
     }),
     prisma.register.count({ where }),
@@ -225,6 +220,7 @@ export async function getEnrollmentById(id: string) {
           name: true,
         },
       },
+      career: true, // Incluye la relación
     },
   });
   return enrollment;
@@ -248,11 +244,24 @@ export async function updateEnrollment(id: string, data: Partial<Omit<Register, 
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { birthDate, user: _user, userId: _userId, ...rest } = data;
-  const updateData: Prisma.RegisterUpdateInput = { ...rest };
+  const { birthDate, user: _user, userId: _userId, career: _career, ...rest } = data;
+  
+  // IMPORTANTE: Separar `carreraTecnica` del resto de los datos
+  const { carreraTecnica, ...otherData } = rest;
+  
+  const updateData: Prisma.RegisterUpdateInput = { ...otherData };
 
   if (birthDate) {
     updateData.birthDate = new Date(birthDate);
+  }
+
+  // ✅ CORRECCIÓN: Manejar la actualización de la relación
+  if (carreraTecnica) {
+    updateData.career = {
+      connect: {
+        name: carreraTecnica,
+      },
+    };
   }
 
   const imageFields: RegisterImageKeys[] = [
@@ -314,7 +323,6 @@ export async function updateEnrollment(id: string, data: Partial<Omit<Register, 
       throw error; // Re-throw the original error
   }
 }
-
 
 export async function deleteEnrollment(id: string) {
   const enrollmentToDelete = await prisma.register.findUnique({ where: { id } });

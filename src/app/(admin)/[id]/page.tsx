@@ -8,7 +8,9 @@ import { Register } from '@/lib/types';
 import { useCurrentUser } from '@/hooks/use-current-user'; // 1. Importar el hook de usuario
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal } from 'lucide-react';
+import { List, Terminal } from 'lucide-react';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 export default function EditEnrollmentPage() {
   const params = useParams();
@@ -97,7 +99,16 @@ export default function EditEnrollmentPage() {
   if (isAuthorized && enrollment) {
     return (
       <div>
-        <h1 className="text-2xl font-bold mb-4">Editar Matrícula</h1>
+        <div className='flex items-center justify-between mb-4'>
+          <h1 className="text-2xl font-bold mb-4">Editar Matrícula</h1>
+          <Button asChild>
+            <Link href="/register">
+              <List className="mr-2 h-4 w-4" />
+              Volver
+            </Link>
+          </Button>
+        </div>
+
         <RegisterForm enrollment={enrollment} />
       </div>
     );

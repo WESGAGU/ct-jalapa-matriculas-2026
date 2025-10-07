@@ -1,37 +1,45 @@
 import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
 import type { Register } from '@/lib/types';
-import { Register as PrismaRegister } from '@prisma/client';
+import { Career, Register as PrismaRegister } from '@prisma/client';
 
-// Estilos (sin cambios)
+// --- ESTILOS MODIFICADOS ---
 const styles = StyleSheet.create({
-  page: { padding: 20, fontFamily: 'Helvetica', fontSize: 9, color: '#333' },
+  // Ajuste 1: Reducir padding general y cambiar a tamaño CARTA (LETTER)
+  page: {
+    paddingTop: 30,
+    paddingBottom: 30,
+    paddingHorizontal: 25,
+    fontFamily: 'Helvetica',
+    fontSize: 9.5, // Ajuste 2: Reducir ligeramente el tamaño de fuente base
+    color: '#333'
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 5,
+    marginBottom: 5, // Reducido
   },
   logoLeft: { width: 110, height: 30 },
   logoRight: { width: 60, height: 40 },
   centerContent: { flex: 1, alignItems: 'center', marginHorizontal: 10 },
-  title: { fontSize: 14, fontWeight: 'bold', textTransform: 'uppercase', marginBottom: 5 },
-  subtitle: { fontSize: 12, fontWeight: 'bold' },
+  title: { fontSize: 13, fontWeight: 'bold', textTransform: 'uppercase', marginBottom: 5 }, // Ligeramente más pequeño
+  subtitle: { fontSize: 11, fontWeight: 'bold' },
   topInfoContainer: {
-    marginBottom: 15,
+    marginBottom: 10, // Reducido de 15
   },
   infoRow: {
     flexDirection: 'row',
-    marginBottom: 5,
+    marginBottom: 3, // Reducido de 5
     alignItems: 'flex-end',
   },
   infoLabel: {
     fontWeight: 'bold',
     width: 110,
-    fontSize: 9,
+    fontSize: 8, // Coherente con la base
   },
   infoLabel2: {
-    fontSize: 9,
+    fontSize: 8, // Coherente con la base
     position: 'relative',
     left: 250,
     fontWeight: 'bold'
@@ -41,13 +49,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
     borderBottomColor: '#000',
     paddingBottom: 1,
-    fontSize: 9,
+    fontSize: 8, // Coherente con la base
     marginRight: 10,
   },
   secondInfoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 5,
+    marginBottom: 3, // Reducido de 5
   },
   dateEmailContainer: {
     flexDirection: 'row',
@@ -57,38 +65,51 @@ const styles = StyleSheet.create({
   infoContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 15,
-    fontSize: 10,
+    marginBottom: 10, // Reducido de 15
+    fontSize: 9, // Ligeramente más pequeño
   },
   infoColumn: { width: '65%' },
-  section: {padding: 5 },
-  sectionTitle: {padding: 4, fontSize: 10, fontWeight: 'bold', marginBottom: 8, textAlign: 'center' },
+  section: { padding: "2px 5px" }, // Reducido el padding vertical
+  sectionTitle: {
+    padding: 3, // Reducido
+    fontSize: 10,  // Reducido
+    fontWeight: 'bold',
+    marginBottom: 5, // Reducido de 8
+    textAlign: 'center'
+  },
   grid: { display: 'flex', flexDirection: 'row', flexWrap: 'wrap' },
-  field: { display: 'flex', flexDirection: 'row', alignItems: 'flex-end', width: '50%', paddingRight: 10, marginBottom: 6 },
+  field: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    width: '50%',
+    paddingRight: 10,
+    marginBottom: 3, // Ajuste 3: Reducir el espacio entre campos (clave)
+  },
   fieldFull: { width: '100%' },
   label: { fontSize: 8, fontWeight: 'bold', width: 140 },
-  value: { flex: 1, borderBottomWidth: 1, borderBottomColor: '#666', paddingBottom: 2 },
-  footer: { 
-    position: 'absolute', 
-    bottom: 40, 
-    left: 40, 
-    right: 40, 
-    display: 'flex', 
-    flexDirection: 'row', 
-    justifyContent: 'space-around', 
-    paddingTop: 30, 
-    textAlign: 'center', 
-    fontSize: 10 
+  value: { flex: 1, borderBottomWidth: 1, borderBottomColor: '#666', paddingBottom: 1 },
+  footer: {
+    position: 'absolute',
+    bottom: 30, // Ajuste 4: Subir el pie de página para que coincida con el nuevo padding
+    left: 40,
+    right: 40,
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingTop: 20, // Reducido
+    textAlign: 'center',
+    fontSize: 9
   },
   signatureContainer: {
     width: 220,
     position: 'relative',
     alignItems: 'center',
   },
-  signatureLine: { 
-    borderTopWidth: 1, 
-    borderTopColor: '#333', 
-    paddingTop: 5, 
+  signatureLine: {
+    borderTopWidth: 1,
+    borderTopColor: '#333',
+    paddingTop: 5,
     width: 200
   },
   firmaImage: {
@@ -98,6 +119,7 @@ const styles = StyleSheet.create({
     top: -40,
     objectFit: 'contain',
   },
+  // --- Estilos de las páginas de imágenes (sin cambios) ---
   imagePage: {
     padding: 40,
     display: 'flex',
@@ -131,12 +153,15 @@ const Field = ({ label, value, fullWidth = false }: { label: string; value: stri
 );
 
 interface EnrollmentPDFProps {
-  enrollment: Register | PrismaRegister;
+  enrollment: (Register | PrismaRegister) & { career?: Career | null };
 }
 
 export const EnrollmentPDF = ({ enrollment }: EnrollmentPDFProps) => (
   <Document>
-    <Page size="A4" style={styles.page}>
+    {/* Ajuste 5: Cambiar a tamaño CARTA (LETTER) */}
+    <Page size="LETTER" style={styles.page}>
+      {/* El resto del JSX no necesita cambios */}
+      
       {/* Encabezado con logos */}
       <View style={styles.header}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
@@ -191,7 +216,7 @@ export const EnrollmentPDF = ({ enrollment }: EnrollmentPDFProps) => (
                 <Field label="MUNICIPIO DOMICILIAR" value={enrollment.municipioDomiciliar} />
                 <Field label="DEPARTAMENTO DOMICILIAR" value={enrollment.deptoDomiciliar} />
                 <Field label="No. DE PERSONAS EN EL HOGAR" value={enrollment.numPersonasHogar} />
-                <Field label="COMUNIDAD" value={enrollment.comunidad} />
+                <Field label="COMUNIDAD DOMICILIAR" value={enrollment.comunidad} />
                 <Field label="PROFESIÓN" value="" />
                 <Field label="DIRECCIÓN DOMICILIAR" value={enrollment.direccion} fullWidth />
                 <Field label="TELÉFONO CELULAR" value={enrollment.telefonoCelular} />
@@ -200,6 +225,10 @@ export const EnrollmentPDF = ({ enrollment }: EnrollmentPDFProps) => (
                 <Field label="ÁREA" value="" />
                 <Field label="NIVEL ACADÉMICO" value={enrollment.nivelAcademico} />
                 <Field label="IDIOMA" value="Español" />
+                <Field label="DISCAPACIDAD" value="" />
+                <Field label="PROGRAMA DE EGRESO" value="" />
+                <Field label="MATRICULA" value="" />
+                <Field label="AÑO DE BACHILLERATO" value="" />
             </View>
         </View>
         <View style={styles.section}>
@@ -234,11 +263,17 @@ export const EnrollmentPDF = ({ enrollment }: EnrollmentPDFProps) => (
                 <Field label="ESPECIALIDAD O CURSO" value={enrollment.carreraTecnica} />
                 <Field label="MODO/NIVEL DE FORMACIÓN" value="" />
                 <Field label="GRUPO" value="" />
-                <Field label="TURNO" value="" />
-                <Field label="AÑO" value="2025" />
+                <Field label="TURNO" value={enrollment.career?.shift || 'No especificado'} />
+                <Field label="AÑO" value="2026" />
                 <Field label="FECHA DE INICIO" value="" />
                 <Field label="HORARIO" value="" />
             </View>
+        </View>
+        <View style={styles.section}>
+            <Text style={styles.sectionTitle}>V. DOCUMENTOS PRESENTADOS</Text>
+        </View>
+        <View style={styles.section}>
+            <Text style={styles.sectionTitle}>VI. OBSERVACIONES</Text>
         </View>
 
       {/* Footer con firmas */}
@@ -256,9 +291,9 @@ export const EnrollmentPDF = ({ enrollment }: EnrollmentPDFProps) => (
       </View>
     </Page>
 
-    {/* Páginas de imágenes */}
+    {/* Páginas de imágenes (sin cambios) */}
     {(enrollment.cedulaFileFrente || enrollment.cedulaFileReverso) && (
-      <Page size="A4" style={styles.imagePage}>
+      <Page size="LETTER" style={styles.imagePage}>
         {enrollment.cedulaFileFrente && (
           // eslint-disable-next-line jsx-a11y/alt-text
           <Image style={styles.image} src={enrollment.cedulaFileFrente} />
@@ -270,19 +305,19 @@ export const EnrollmentPDF = ({ enrollment }: EnrollmentPDFProps) => (
       </Page>
     )}
     {enrollment.birthCertificateFile && (
-      <Page size="A4" style={styles.imagePage}>
+      <Page size="LETTER" style={styles.imagePage}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
         <Image style={styles.ImageNotasDiplomaNacimiento} src={enrollment.birthCertificateFile} />
       </Page>
     )}
     {enrollment.diplomaFile && (
-      <Page size="A4" style={styles.imagePage} orientation='landscape'>
+      <Page size="LETTER" style={styles.imagePage} orientation='landscape'>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
         <Image style={styles.ImageNotasDiplomaNacimiento} src={enrollment.diplomaFile} />
       </Page>
     )}
     {enrollment.gradesCertificateFile && (
-      <Page size="A4" style={styles.imagePage}>
+      <Page size="LETTER" style={styles.imagePage}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
         <Image style={styles.ImageNotasDiplomaNacimiento} src={enrollment.gradesCertificateFile} />
       </Page>

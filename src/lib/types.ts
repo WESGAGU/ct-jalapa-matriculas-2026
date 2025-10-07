@@ -1,3 +1,5 @@
+import type { Career } from '@prisma/client';
+
 export interface Register {
   id: string;
   createdAt: Date;
@@ -19,7 +21,7 @@ export interface Register {
   telefonoCelular: string;
   email?: string | null;
   nivelAcademico: string;
-  
+
   // Section 2: CARRERA TÉCNICA
   carreraTecnica: string;
 
@@ -34,7 +36,7 @@ export interface Register {
   cedulaFileReverso?: string | null;
   birthCertificateFile?: string | null;
   diplomaFile?: string | null;
-  gradesCertificateFile?: string | null; // Nuevo campo
+  gradesCertificateFile?: string | null;
   firmaProtagonista?: string | null;
 
   // Relación con usuario
@@ -42,9 +44,10 @@ export interface Register {
   user?: {
     name: string | null;
   } | null;
+
+  // Relación con Career
+  career?: Career | null;
 }
-
-
 
 export interface User {
   id: string;
