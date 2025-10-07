@@ -6,10 +6,16 @@ import RegisterListView from "@/components/dashboard/register-list-view";
 import EnrollmentsByCareer from "@/components/dashboard/enrollments-by-career"; 
 import EnrollmentsByMunicipality from "@/components/dashboard/Enrollments-by-municipality";
 import EnrollmentsByAcademicLevel from "@/components/dashboard/enrollments-by-academic-level";
-import EnrollmentsByAgeRange from "@/components/dashboard/enrollments-by-age";
+import EnrollmentsByAge from "@/components/dashboard/enrollments-by-age";
 
 export default async function Home() {
   const stats = await getEnrollmentStats();
+
+  // ADAPTACIÓN DE DATOS: Transformamos 'enrollmentsByLocation' para el gráfico
+  const municipalityData = stats.enrollmentsByLocation.map(location => ({
+    name: location.municipio,
+    total: location.comunidades.reduce((sum, community) => sum + community.total, 0),
+  }));
 
   return (
     <div className="space-y-6">
@@ -56,7 +62,8 @@ export default async function Home() {
             <CardTitle>Procedencia de Estudiantes</CardTitle>
           </CardHeader>
           <CardContent>
-            <EnrollmentsByMunicipality data={stats.enrollmentsByMunicipality}/>
+            {/* Se pasan los datos ya transformados */}
+            <EnrollmentsByMunicipality data={municipalityData}/>
           </CardContent>
         </Card>
 
@@ -74,7 +81,7 @@ export default async function Home() {
             <CardTitle>Distribución por Edades</CardTitle>
           </CardHeader>
           <CardContent>
-            <EnrollmentsByAgeRange data={stats.enrollmentsByAge}/>
+            <EnrollmentsByAge data={stats.enrollmentsByAge}/>
           </CardContent>
         </Card>
       </div>
