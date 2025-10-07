@@ -167,23 +167,13 @@ export async function getEnrollments(
   const where: Prisma.RegisterWhereInput = {};
 
   if (filters.date) {
-    // --- INICIO DE LA CORRECCIÓN DE FECHA ---
-    // El string filters.date viene en formato "YYYY-MM-DD".
-    // Dividirlo previene problemas de zona horaria, creando la fecha en la zona horaria local del servidor.
     const [year, month, day] = filters.date.split('-').map(Number);
-
-    // Creamos la fecha de inicio a las 00:00 del día seleccionado.
-    // El mes en el constructor de Date es 0-indexado (0=Enero), por eso restamos 1.
     const startOfDay = new Date(year, month - 1, day);
-
-    // Creamos la fecha de fin para que sea el inicio del día siguiente.
     const endOfDay = new Date(year, month - 1, day + 1);
-
     where.createdAt = {
-      gte: startOfDay, // Mayor o igual que el inicio del día seleccionado.
-      lt: endOfDay,    // Menor que el inicio del día siguiente.
+      gte: startOfDay,
+      lt: endOfDay,
     };
-    // --- FIN DE LA CORRECCIÓN DE FECHA ---
   }
 
   if (filters.user) {
@@ -371,7 +361,7 @@ export async function getEnrollmentStats() {
   const [
     totalEnrollments,
     enrollmentsByCareerRaw,
-    enrollmentsByMunicipalityRaw,
+    enrollmentsByLocationRaw,
     enrollmentsByAcademicLevelRaw,
     allEnrollmentsForAge,
     allCareers,
@@ -383,9 +373,12 @@ export async function getEnrollmentStats() {
       orderBy: { _count: { carreraTecnica: 'desc' } },
     }),
     prisma.register.groupBy({
-      by: ['municipioDomiciliar'],
-      _count: { municipioDomiciliar: true },
-      orderBy: { _count: { municipioDomiciliar: 'desc' } },
+      by: ['municipioDomiciliar', 'comunidad'],
+      _count: { id: true },
+      orderBy: [
+        { municipioDomiciliar: 'asc' },
+        { _count: { id: 'desc' } },
+      ],
     }),
     prisma.register.groupBy({
       by: ['nivelAcademico'],
@@ -422,37 +415,43 @@ export async function getEnrollmentStats() {
     shift: careersMap.get(item.carreraTecnica) || 'DESCONOCIDO',
   }));
 
-  const enrollmentsByMunicipality = enrollmentsByMunicipalityRaw.map(item => ({
-    name: item.municipioDomiciliar,
-    total: item._count.municipioDomiciliar,
-  }));
+  const enrollmentsByLocation = enrollmentsByLocationRaw.reduce((acc: { municipio: string; comunidades: { name: string; total: number }[] }[], item) => {
+    const municipio = item.municipioDomiciliar;
+    const comunidad = {
+      name: item.comunidad,
+      total: item._count?.id ?? 0,
+    };
+    
+    const existingMunicipio = acc.find((m: { municipio: string }) => m.municipio === municipio);
+    if (existingMunicipio) {
+      existingMunicipio.comunidades.push(comunidad);
+    } else {
+      acc.push({
+        municipio,
+        comunidades: [comunidad],
+      });
+    }
+    return acc;
+  }, []);
+
 
   const enrollmentsByAcademicLevel = enrollmentsByAcademicLevelRaw.map(item => ({
     name: item.nivelAcademico,
     total: item._count.nivelAcademico,
   }));
 
-  const ageRanges = {
-    '14-17': 0,
-    '18-21': 0,
-    '22+': 0,
-  };
+  const ages = allEnrollmentsForAge.map(enrollment => calculateAge(enrollment.birthDate));
+  const ageCounts = ages.reduce((acc, age) => {
+    acc[age] = (acc[age] || 0) + 1;
+    return acc;
+  }, {} as Record<number, number>);
 
-  allEnrollmentsForAge.forEach(enrollment => {
-    const age = calculateAge(enrollment.birthDate);
-    if (age >= 14 && age <= 17) {
-      ageRanges['14-17']++;
-    } else if (age >= 18 && age <= 21) {
-      ageRanges['18-21']++;
-    } else if (age >= 22) {
-      ageRanges['22+']++;
-    }
-  });
-
-  const enrollmentsByAgeRange = Object.entries(ageRanges).map(([range, total]) => ({
-    name: range,
-    total,
-  }));
+  const enrollmentsByAge = Object.entries(ageCounts)
+    .map(([age, total]) => ({
+      age: parseInt(age, 10),
+      total,
+    }))
+    .sort((a, b) => a.age - b.age);
 
 
   return {
@@ -460,9 +459,9 @@ export async function getEnrollmentStats() {
     monthlyTotal,
     monthlyEnrollments: monthlyEnrollments.reverse(),
     enrollmentsByCareer,
-    enrollmentsByMunicipality,
+    enrollmentsByLocation,
     enrollmentsByAcademicLevel,
-    enrollmentsByAgeRange,
+    enrollmentsByAge,
   };
 }
 

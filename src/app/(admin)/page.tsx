@@ -3,10 +3,10 @@ import StatsCards from "@/components/dashboard/stats-cards";
 import RegisterChart from "@/components/dashboard/register-chart";
 import { getEnrollmentStats } from "@/lib/actions";
 import RegisterListView from "@/components/dashboard/register-list-view";
-import EnrollmentsByCareer from "@/components/dashboard/enrollments-by-career"; // 1. Importar el nuevo componente
+import EnrollmentsByCareer from "@/components/dashboard/enrollments-by-career"; 
 import EnrollmentsByMunicipality from "@/components/dashboard/Enrollments-by-municipality";
 import EnrollmentsByAcademicLevel from "@/components/dashboard/enrollments-by-academic-level";
-import EnrollmentsByAgeRange from "@/components/dashboard/enrollments-by-rage-range";
+import EnrollmentsByAgeRange from "@/components/dashboard/enrollments-by-age";
 
 export default async function Home() {
   const stats = await getEnrollmentStats();
@@ -74,7 +74,7 @@ export default async function Home() {
             <CardTitle>Distribución por Edades</CardTitle>
           </CardHeader>
           <CardContent>
-            <EnrollmentsByAgeRange data={stats.enrollmentsByAgeRange}/>
+            <EnrollmentsByAgeRange data={stats.enrollmentsByAge}/>
           </CardContent>
         </Card>
       </div>
