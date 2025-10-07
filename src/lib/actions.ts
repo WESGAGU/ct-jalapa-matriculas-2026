@@ -103,8 +103,10 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
     const gradesCertificateUrl = await uploadAndTrack(rest.gradesCertificateFile);
     const firmaUrl = await uploadAndTrack(rest.firmaProtagonista);
 
+    const { carreraTecnica, ...dataWithoutCareer } = rest;
+
     const createData: Prisma.RegisterCreateInput = {
-      ...rest,
+      ...dataWithoutCareer,
       id,
       birthDate: new Date(enrollment.birthDate),
       cedulaFileFrente: cedulaFrenteUrl,
@@ -114,7 +116,7 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
       gradesCertificateFile: gradesCertificateUrl,
       firmaProtagonista: firmaUrl,
       user: userId ? { connect: { id: userId } } : undefined,
-      career: { connect: { name: rest.carreraTecnica } },
+      career: { connect: { name: carreraTecnica } },
     };
 
     const newEnrollment = await prisma.register.create({ data: createData });
@@ -181,9 +183,11 @@ export async function getEnrollments(
   }
 
   if (filters.career) {
-    where.carreraTecnica = {
-      contains: filters.career,
-      mode: 'insensitive',
+    where.career = {
+      name: {
+        contains: filters.career,
+        mode: 'insensitive',
+      },
     };
   }
 
@@ -201,7 +205,7 @@ export async function getEnrollments(
             name: true,
           },
         },
-        career: true, // Incluye la relación
+        career: true,
       },
     }),
     prisma.register.count({ where }),
@@ -220,7 +224,7 @@ export async function getEnrollmentById(id: string) {
           name: true,
         },
       },
-      career: true, // Incluye la relación
+      career: true,
     },
   });
   return enrollment;
@@ -246,7 +250,6 @@ export async function updateEnrollment(id: string, data: Partial<Omit<Register, 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { birthDate, user: _user, userId: _userId, career: _career, ...rest } = data;
   
-  // IMPORTANTE: Separar `carreraTecnica` del resto de los datos
   const { carreraTecnica, ...otherData } = rest;
   
   const updateData: Prisma.RegisterUpdateInput = { ...otherData };
@@ -255,7 +258,6 @@ export async function updateEnrollment(id: string, data: Partial<Omit<Register, 
     updateData.birthDate = new Date(birthDate);
   }
 
-  // ✅ CORRECCIÓN: Manejar la actualización de la relación
   if (carreraTecnica) {
     updateData.career = {
       connect: {
@@ -287,7 +289,13 @@ export async function updateEnrollment(id: string, data: Partial<Omit<Register, 
       }
       
       const { url, publicId } = await uploadImage(newValue);
+      
+      // ✅ **CORRECCIÓN AQUÍ: Eliminado `as any`**
+      // TypeScript infiere correctamente que `field` es una de las `RegisterImageKeys`,
+      // y que el tipo de `url` (`string | null`) es asignable a las propiedades
+      // correspondientes en `Prisma.RegisterUpdateInput`.
       updateData[field] = url;
+
       if (publicId) newlyUploadedPublicIds.push(publicId);
     }
   }
@@ -305,7 +313,6 @@ export async function updateEnrollment(id: string, data: Partial<Omit<Register, 
       data: updateData,
     });
     
-    // If update is successful, delete old images
     if (publicIdsToDelete.length > 0) {
       await cloudinary.api.delete_resources(publicIdsToDelete);
     }
@@ -316,11 +323,10 @@ export async function updateEnrollment(id: string, data: Partial<Omit<Register, 
     return updatedEnrollment;
 
   } catch (error) {
-      // If update fails, delete newly uploaded images
       if (newlyUploadedPublicIds.length > 0) {
           await cloudinary.api.delete_resources(newlyUploadedPublicIds);
       }
-      throw error; // Re-throw the original error
+      throw error;
   }
 }
 

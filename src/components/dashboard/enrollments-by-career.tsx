@@ -5,14 +5,14 @@ import {
   CardContent,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Shift } from '@prisma/client'; // Importar el tipo Shift si está disponible
+import { Shift } from '@prisma/client';
 
 // Definimos la nueva estructura de los datos que recibirá el componente
 interface EnrollmentsByCareerProps {
   data: {
     name: string;
     total: number;
-    shift: string; // O Shift si lo importas
+    shift: string;
   }[];
 }
 
@@ -47,7 +47,7 @@ export default function EnrollmentsByCareer({ data }: EnrollmentsByCareerProps) 
                 <h4 className="text-sm font-semibold text-foreground mb-3 pb-2 border-b">
                   {shiftLabels[shift] || shift}
                 </h4>
-                <div className="space-y-4">
+                <div className="max-h-64 overflow-y-auto space-y-4 pr-4">
                   {groupedByShift[shift].map((career) => (
                     <div
                       key={career.name}
