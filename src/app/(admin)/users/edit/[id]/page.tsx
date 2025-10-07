@@ -25,7 +25,7 @@ import { Loader2 } from 'lucide-react';
 import { Form, FormField, FormItem, FormControl, FormMessage, FormLabel } from "@/components/ui/form";
 import { useRouter, useParams } from 'next/navigation';
 import { User } from '@prisma/client';
-import { withAdminAuth } from '@/components/auth/withAdminAuth'; // 1. Importa el HOC
+import { withAdminAuth } from '@/components/auth/withAdminAuth';
 
 const userFormSchema = z.object({
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres.").optional(),
@@ -64,8 +64,9 @@ function EditUserPage() {
           } else {
              router.push('/users');
           }
-        } catch (error) {
-           console.error(error)
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        } catch (_error) {
+           console.error(_error)
         }
       };
       fetchUser();
@@ -104,7 +105,8 @@ function EditUserPage() {
           variant: "destructive",
         });
       }
-    } catch (error) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (_error) {
       toast({
         title: "Error de Red",
         description: "No se pudo conectar con el servidor.",
@@ -208,5 +210,4 @@ function EditUserPage() {
   );
 }
 
-// 2. Envuelve el componente en el HOC antes de exportarlo
 export default withAdminAuth(EditUserPage);

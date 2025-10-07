@@ -217,6 +217,7 @@ export default function RegisterList() {
         career: searchCareer,
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, isClient]);
 
   const handleDelete = async (id: string) => {

@@ -3,6 +3,7 @@ import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/render
 import type { Register } from '@/lib/types';
 import { Register as PrismaRegister } from '@prisma/client';
 
+// Estilos (sin cambios)
 const styles = StyleSheet.create({
   page: { padding: 20, fontFamily: 'Helvetica', fontSize: 9, color: '#333' },
   header: {
@@ -16,17 +17,14 @@ const styles = StyleSheet.create({
   centerContent: { flex: 1, alignItems: 'center', marginHorizontal: 10 },
   title: { fontSize: 14, fontWeight: 'bold', textTransform: 'uppercase', marginBottom: 5 },
   subtitle: { fontSize: 12, fontWeight: 'bold' },
-  
   topInfoContainer: {
     marginBottom: 15,
   },
-  
   infoRow: {
     flexDirection: 'row',
     marginBottom: 5,
     alignItems: 'flex-end',
   },
-  
   infoLabel: {
     fontWeight: 'bold',
     width: 110,
@@ -38,7 +36,6 @@ const styles = StyleSheet.create({
     left: 250,
     fontWeight: 'bold'
   },
-  
   infoValue: {
     flex: 1,
     borderBottomWidth: 0.5,
@@ -47,19 +44,16 @@ const styles = StyleSheet.create({
     fontSize: 9,
     marginRight: 10,
   },
-  
   secondInfoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 5,
   },
-  
   dateEmailContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     width: '65%',
   },
-  
   infoContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -74,8 +68,6 @@ const styles = StyleSheet.create({
   fieldFull: { width: '100%' },
   label: { fontSize: 8, fontWeight: 'bold', width: 140 },
   value: { flex: 1, borderBottomWidth: 1, borderBottomColor: '#666', paddingBottom: 2 },
-  
-  // --- INICIO DE LA CORRECCIÓN DE ESTILOS ---
   footer: { 
     position: 'absolute', 
     bottom: 40, 
@@ -88,29 +80,24 @@ const styles = StyleSheet.create({
     textAlign: 'center', 
     fontSize: 10 
   },
-  
   signatureContainer: {
-    width: 220, // Ancho del contenedor de firma
-    position: 'relative', // Necesario para posicionar la imagen de firma
-    alignItems: 'center', // Centra la línea de firma
+    width: 220,
+    position: 'relative',
+    alignItems: 'center',
   },
-  
   signatureLine: { 
     borderTopWidth: 1, 
     borderTopColor: '#333', 
     paddingTop: 5, 
-    width: 200 // Ancho de la línea
+    width: 200
   },
-
   firmaImage: {
     position: 'absolute',
-    width: 150,      // Ajusta el ancho de la firma
-    height: 60,      // Ajusta la altura
-    top: -40,        // Sube la imagen para que quede sobre la línea
-    objectFit: 'contain', // Asegura que la imagen escale correctamente
+    width: 150,
+    height: 60,
+    top: -40,
+    objectFit: 'contain',
   },
-  // --- FIN DE LA CORRECCIÓN DE ESTILOS ---
-
   imagePage: {
     padding: 40,
     display: 'flex',
@@ -136,7 +123,6 @@ const styles = StyleSheet.create({
   },
 });
 
-// Componente Field
 const Field = ({ label, value, fullWidth = false }: { label: string; value: string | number | null | undefined; fullWidth?: boolean }) => (
   <View style={fullWidth ? [styles.field, styles.fieldFull] : styles.field}>
     <Text style={styles.label}>{label}:</Text>
@@ -153,6 +139,7 @@ export const EnrollmentPDF = ({ enrollment }: EnrollmentPDFProps) => (
     <Page size="A4" style={styles.page}>
       {/* Encabezado con logos */}
       <View style={styles.header}>
+        {/* eslint-disable-next-line jsx-a11y/alt-text */}
         <Image
           style={styles.logoLeft}
           src="/pdf-logo-izquierda.jpg"
@@ -160,6 +147,7 @@ export const EnrollmentPDF = ({ enrollment }: EnrollmentPDFProps) => (
         <View style={styles.centerContent}>
           <Text style={styles.title}>HOJA DE MATRÍCULA 2026</Text>
         </View>
+        {/* eslint-disable-next-line jsx-a11y/alt-text */}
         <Image
           style={styles.logoRight}
           src="/pdf-logo-derecha.jpg"
@@ -185,7 +173,7 @@ export const EnrollmentPDF = ({ enrollment }: EnrollmentPDFProps) => (
           </View>
       </View>
 
-      {/* --- Secciones de datos (sin cambios) --- */}
+      {/* Secciones de datos */}
         <View style={styles.section}>
             <Text style={styles.sectionTitle}>I. DATOS PERSONALES DEL PARTICIPANTE</Text>
             <View style={styles.grid}>
@@ -253,45 +241,49 @@ export const EnrollmentPDF = ({ enrollment }: EnrollmentPDFProps) => (
             </View>
         </View>
 
-      {/* --- INICIO DE LA CORRECCIÓN DEL FOOTER --- */}
+      {/* Footer con firmas */}
       <View style={styles.footer}>
         <View style={styles.signatureContainer}>
           {enrollment.firmaProtagonista && (
+            // eslint-disable-next-line jsx-a11y/alt-text
             <Image style={styles.firmaImage} src={enrollment.firmaProtagonista} />
           )}
           <Text style={styles.signatureLine}>Firma del Protagonista</Text>
         </View>
         <View style={styles.signatureContainer}>
-           {/* Aquí podrías poner la firma de registro si la tuvieras */}
           <Text style={styles.signatureLine}>Firma de Registro</Text>
         </View>
       </View>
-      {/* --- FIN DE LA CORRECCIÓN DEL FOOTER --- */}
     </Page>
 
-    {/* --- Páginas de imágenes (sin cambios) --- */}
+    {/* Páginas de imágenes */}
     {(enrollment.cedulaFileFrente || enrollment.cedulaFileReverso) && (
       <Page size="A4" style={styles.imagePage}>
         {enrollment.cedulaFileFrente && (
+          // eslint-disable-next-line jsx-a11y/alt-text
           <Image style={styles.image} src={enrollment.cedulaFileFrente} />
         )}
         {enrollment.cedulaFileReverso && (
+          // eslint-disable-next-line jsx-a11y/alt-text
           <Image style={styles.image} src={enrollment.cedulaFileReverso} />
         )}
       </Page>
     )}
     {enrollment.birthCertificateFile && (
       <Page size="A4" style={styles.imagePage}>
+        {/* eslint-disable-next-line jsx-a11y/alt-text */}
         <Image style={styles.ImageNotasDiplomaNacimiento} src={enrollment.birthCertificateFile} />
       </Page>
     )}
     {enrollment.diplomaFile && (
       <Page size="A4" style={styles.imagePage} orientation='landscape'>
+        {/* eslint-disable-next-line jsx-a11y/alt-text */}
         <Image style={styles.ImageNotasDiplomaNacimiento} src={enrollment.diplomaFile} />
       </Page>
     )}
     {enrollment.gradesCertificateFile && (
       <Page size="A4" style={styles.imagePage}>
+        {/* eslint-disable-next-line jsx-a11y/alt-text */}
         <Image style={styles.ImageNotasDiplomaNacimiento} src={enrollment.gradesCertificateFile} />
       </Page>
     )}

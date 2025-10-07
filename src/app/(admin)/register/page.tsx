@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 import Link from "next/link";
 import RegisterList from "@/components/register/register-list";
-import { Card, CardContent} from "@/components/ui/card";
 
 export default function RegisterPage() {
   return (

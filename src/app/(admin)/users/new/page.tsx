@@ -23,7 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from 'lucide-react';
 import { Form, FormField, FormItem, FormControl, FormMessage, FormLabel } from "@/components/ui/form";
 import { useRouter } from "next/navigation";
-import { withAdminAuth } from "@/components/auth/withAdminAuth"; 
+import { withAdminAuth } from "../../../../components/auth/withAdminAuth"; 
 
 const userFormSchema = z.object({
   name: z.string().min(3, "El nombre de usuario debe tener al menos 3 caracteres."),
@@ -34,7 +34,6 @@ const userFormSchema = z.object({
 
 type UserFormValues = z.infer<typeof userFormSchema>;
 
-// Define el componente de la página como una función normal
 function NewUserPage() {
   const { toast } = useToast();
   const router = useRouter();
@@ -74,6 +73,7 @@ function NewUserPage() {
           variant: "destructive",
         });
       }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       toast({
         title: "Error de Red",
@@ -170,5 +170,4 @@ function NewUserPage() {
   );
 }
 
-// 2. Envuelve el componente en el HOC antes de exportarlo
 export default withAdminAuth(NewUserPage);

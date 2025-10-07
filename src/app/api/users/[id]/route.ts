@@ -12,6 +12,14 @@ const userUpdateSchema = z.object({
   role: z.enum(['USER', 'ADMIN']).optional(),
 });
 
+// Definimos un tipo para los datos de actualización
+type UserUpdateData = {
+  name?: string;
+  email?: string;
+  password?: string;
+  role?: 'USER' | 'ADMIN';
+};
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -71,8 +79,8 @@ export async function PUT(
       }
     }
 
-
-    const updateData: any = {};
+    // Usamos el tipo que definimos en lugar de 'any'
+    const updateData: UserUpdateData = {};
     if (name) updateData.name = name;
     if (email) updateData.email = email;
     if (role) updateData.role = role;
@@ -86,6 +94,7 @@ export async function PUT(
     });
 
     // No devolver la contraseña en la respuesta
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...userWithoutPassword } = updatedUser;
 
     return NextResponse.json(userWithoutPassword);

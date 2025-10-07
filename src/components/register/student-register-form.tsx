@@ -49,7 +49,6 @@ import { cn } from "@/lib/utils";
 import { format, isBefore, subYears } from "date-fns";
 import { es } from "date-fns/locale";
 import type SignatureCanvas from "react-signature-canvas";
-import { useTheme } from "next-themes";
 import { ImageDropzone } from "../ui/image-dropzone";
 import dynamic from "next/dynamic";
 import { Career, Register as PrismaRegister } from "@prisma/client";
@@ -235,7 +234,6 @@ interface RegisterFormProps {
 
 export default function StudentRegisterForm({ enrollment, user }: RegisterFormProps) {
   const { toast } = useToast();
-  const { resolvedTheme } = useTheme();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);

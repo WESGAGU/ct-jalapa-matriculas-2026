@@ -7,7 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
 // Este es un Componente de Orden Superior (HOC)
-export function withAdminAuth<P extends {}>(Component: React.ComponentType<P>) {
+export function withAdminAuth<P extends object>(Component: React.ComponentType<P>) {
   // Devuelve un nuevo componente que envuelve al original
   return function WithAdminAuth(props: P) {
     const { user, isLoading } = useCurrentUser();

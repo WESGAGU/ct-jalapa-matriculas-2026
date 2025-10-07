@@ -1,7 +1,6 @@
-// src/app/(admin)/users/user-list.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react"; // 1. Importar useCallback
 import {
   Table,
   TableBody,
@@ -40,17 +39,18 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { useCurrentUser } from "@/hooks/use-current-user"; // Importa el nuevo hook
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 export default function UsersList() {
-  const { user: currentUser, isLoading: isUserLoading } = useCurrentUser(); // Usa el hook
+  const { user: currentUser, isLoading: isUserLoading } = useCurrentUser();
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const { toast } = useToast();
 
-  const fetchUsers = async () => {
+  // 2. Envolver la función en useCallback
+  const fetchUsers = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch("/api/users");
@@ -59,6 +59,7 @@ export default function UsersList() {
       }
       const data = await response.json();
       setUsers(data);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       toast({
         variant: "destructive",
@@ -68,11 +69,11 @@ export default function UsersList() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]); // La dependencia de useCallback es toast
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [fetchUsers]); // 3. Añadir fetchUsers como dependencia
 
   const handleDelete = async () => {
     if (!userToDelete) return;
@@ -92,6 +93,7 @@ export default function UsersList() {
         description: "Usuario eliminado correctamente.",
         variant: "success",
       });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       toast({
         variant: "destructive",
@@ -109,17 +111,14 @@ export default function UsersList() {
     setIsAlertOpen(true);
   };
 
-  // Muestra el esqueleto mientras se cargan los usuarios o la información del usuario actual
   if (isLoading || isUserLoading) {
     return (
       <div className="space-y-4">
-        {/* Esqueleto para vista de tarjetas en móvil */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:hidden">
           {[...Array(4)].map((_, i) => (
             <Skeleton key={i} className="h-40 w-full" />
           ))}
         </div>
-        {/* Esqueleto para vista de tabla en escritorio */}
         <div className="hidden md:block space-y-2">
           {[...Array(5)].map((_, i) => (
             <Skeleton key={i} className="h-12 w-full" />
@@ -133,7 +132,6 @@ export default function UsersList() {
 
   return (
     <>
-      {/* Vista de Tabla para Escritorio (md y superior) */}
       <div className="hidden md:block">
         <Table>
           <TableHeader>
@@ -195,7 +193,6 @@ export default function UsersList() {
         </Table>
       </div>
 
-      {/* Vista de Tarjetas para Móvil (hasta md) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:hidden">
         {users.map((user) => (
           <Card key={user.id} className="relative">
