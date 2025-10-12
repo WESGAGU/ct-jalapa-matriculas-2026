@@ -456,6 +456,7 @@ export default function RegisterList() {
                   <TableRow>
                     <TableHead>Estudiante</TableHead>
                     <TableHead>Carrera</TableHead>
+                    <TableHead>Turno</TableHead>
                     <TableHead>Fecha de Registro</TableHead>
                     <TableHead>Registrado por</TableHead>
                     <TableHead>Estado</TableHead>
@@ -469,6 +470,7 @@ export default function RegisterList() {
                         {enrollment.nombres} {enrollment.apellidos}
                       </TableCell>
                       <TableCell>{enrollment.carreraTecnica}</TableCell>
+                      <TableCell>{enrollment.career?.shift || 'N/A'}</TableCell>
                       <TableCell>
                         {new Date(enrollment.createdAt).toLocaleDateString()}
                       </TableCell>
@@ -561,6 +563,12 @@ export default function RegisterList() {
                   <span className="text-muted-foreground">Carrera:</span>
                   <span className="text-right font-medium">
                     {enrollment.carreraTecnica}
+                  </span>
+                </div>
+                <div className="flex justify-between text-left">
+                  <span className="text-muted-foreground">Turno:</span>
+                  <span className="text-right font-medium">
+                    {enrollment.career?.shift || 'N/A'}
                   </span>
                 </div>
                 <div className="flex justify-between">

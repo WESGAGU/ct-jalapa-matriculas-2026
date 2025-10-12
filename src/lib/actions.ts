@@ -1,5 +1,4 @@
 // src/lib/actions.ts
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -7,7 +6,11 @@ import type { Register } from './types';
 import prisma from './prisma';
 import cloudinary from './cloudinary';
 import { Prisma } from '@prisma/client';
+
+// Importamos cada función desde su archivo específico
 import { sendConfirmationEmail } from '@/lib/sendEmailBrevo';
+import { sendNewEnrollmentNotificationEmail } from '@/lib/sendNotifyBrevo';
+
 
 console.log('use server');
 
@@ -119,8 +122,14 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
       career: { connect: { name: carreraTecnica } },
     };
 
-    const newEnrollment = await prisma.register.create({ data: createData });
+    const newEnrollment = await prisma.register.create({
+      data: createData,
+      include: {
+        career: true, // Incluimos la carrera para tener el dato del turno
+      },
+    });
 
+    // Si el estudiante proporcionó un correo, enviarle la confirmación
     if (newEnrollment.email) {
       try {
         await sendConfirmationEmail(newEnrollment as Register);
@@ -128,6 +137,16 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
         console.error("La matrícula se guardó, pero falló el envío del correo de confirmación:", emailError);
       }
     }
+    
+    // Si la matrícula no tiene un userId, es pública, así que notificamos al admin
+    if (!userId) {
+        try {
+            await sendNewEnrollmentNotificationEmail(newEnrollment as Register);
+        } catch (notificationError) {
+            console.error("La matrícula se guardó, pero falló el envío de la notificación al administrador:", notificationError);
+        }
+    }
+
 
     revalidatePath('/');
     revalidatePath(`/${newEnrollment.id}`);

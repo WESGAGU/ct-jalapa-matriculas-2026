@@ -26,12 +26,10 @@ export default function RegisterListView() {
   const loadAllData = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Pedimos solo la primera página de 5 registros
       const [serverData, localData] = await Promise.all([
         getEnrollments(1, 5), 
         getPendingEnrollments(),
       ]);
-      // Accedemos a la propiedad .enrollments del objeto que retorna la API
       setEnrollments(serverData.enrollments as Register[]);
       setPendingEnrollments(localData);
     } catch {
@@ -51,7 +49,6 @@ export default function RegisterListView() {
     return () => window.removeEventListener("storageUpdated", loadAllData);
   }, [loadAllData]);
 
-  // Ya no necesitamos .slice(0, 5) porque el backend ya nos da solo 5
   const allEnrollments = [...pendingEnrollments, ...enrollments];
 
   if (isLoading) {
@@ -75,6 +72,7 @@ export default function RegisterListView() {
                 <TableRow>
                   <TableHead>Estudiante</TableHead>
                   <TableHead>Carrera</TableHead>
+                  <TableHead>Turno</TableHead>
                   <TableHead>Fecha de Registro</TableHead>
                   <TableHead>Registrado por</TableHead>
                   <TableHead>Estado</TableHead>
@@ -87,6 +85,7 @@ export default function RegisterListView() {
                       {enrollment.nombres} {enrollment.apellidos}
                     </TableCell>
                     <TableCell>{enrollment.carreraTecnica}</TableCell>
+                    <TableCell>{enrollment.career?.shift || "N/A"}</TableCell>
                     <TableCell>
                       {new Date(enrollment.createdAt).toLocaleDateString()}
                     </TableCell>
@@ -135,6 +134,12 @@ export default function RegisterListView() {
                 <span className="text-muted-foreground">Carrera:</span>
                 <span className="text-right font-medium">
                   {enrollment.carreraTecnica}
+                </span>
+              </div>
+              <div className="flex justify-between text-left">
+                <span className="text-muted-foreground">Turno:</span>
+                <span className="text-right font-medium">
+                  {enrollment.career?.shift || 'N/A'}
                 </span>
               </div>
               <div className="flex justify-between">
