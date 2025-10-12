@@ -294,7 +294,7 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
         ? new Date(enrollment.birthDate)
         : (enrollment.birthDate as Date);
 
-    if(date) {
+    if (date) {
       setIsUnderage(!isAtLeast14YearsOld(date));
       setHasBirthDate(true);
     }
@@ -346,6 +346,33 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
   const finishedBachSelected = watch("finishedBachillerato") === "si";
   const birthDateValue = watch("birthDate");
   const carreraValue = watch("carreraTecnica");
+
+  const formatCedula = (value: string) => {
+    if (!value) return "";
+    const cleaned = value.replace(/[^0-9A-Z]/gi, "").toUpperCase();
+    const parts = [];
+
+    if (cleaned.length > 0) {
+      parts.push(cleaned.substring(0, 3));
+    }
+    if (cleaned.length > 3) {
+      parts.push(cleaned.substring(3, 9));
+    }
+    if (cleaned.length > 9) {
+      parts.push(cleaned.substring(9, 14));
+    }
+
+    return parts.join("-");
+  };
+
+  const capitalizeWords = (value: string) => {
+    if (!value) return "";
+    return value
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
 
   useEffect(() => {
     if (birthDateValue) {
@@ -409,23 +436,23 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
     ]);
 
     const enrollmentData: Register = {
-        id: isEditMode && enrollment ? enrollment.id : crypto.randomUUID(),
-        ...rest,
-        birthDate: rest.birthDate as Date,
-        cedula: typeof rest.cedula === "string" ? (rest.cedula.trim() || undefined) : undefined,
-        email: typeof rest.email === "string" ? (rest.email.trim() || undefined) : undefined,
-        numPersonasHogar: Number(rest.numPersonasHogar),
-        createdAt: isEditMode && enrollment ? new Date(enrollment.createdAt) : new Date(),
-        updatedAt: new Date(),
-        cedulaFileFrente: hasCedula === "si" ? cedulaFrente : undefined,
-        cedulaFileReverso: hasCedula === "si" ? cedulaReverso : undefined,
-        birthCertificateFile: hasCedula === "no" ? birthCertificate : undefined,
-        diplomaFile: finishedBachillerato === "si" ? diploma : undefined,
-        gradesCertificateFile: finishedBachillerato === "no" ? gradesCertificate : undefined,
-        firmaProtagonista: sigCanvas.current?.isEmpty() ? (enrollment as Register)?.firmaProtagonista : sigCanvas.current?.toDataURL("image/png"),
-        userId: enrollment ? (enrollment as PrismaRegister).userId : user?.id || null,
-        user: enrollment ? (enrollment as Register).user : { name: user?.name || null },
-      };
+      id: isEditMode && enrollment ? enrollment.id : crypto.randomUUID(),
+      ...rest,
+      birthDate: rest.birthDate as Date,
+      cedula: typeof rest.cedula === "string" ? (rest.cedula.trim() || undefined) : undefined,
+      email: typeof rest.email === "string" ? (rest.email.trim() || undefined) : undefined,
+      numPersonasHogar: Number(rest.numPersonasHogar),
+      createdAt: isEditMode && enrollment ? new Date(enrollment.createdAt) : new Date(),
+      updatedAt: new Date(),
+      cedulaFileFrente: hasCedula === "si" ? cedulaFrente : undefined,
+      cedulaFileReverso: hasCedula === "si" ? cedulaReverso : undefined,
+      birthCertificateFile: hasCedula === "no" ? birthCertificate : undefined,
+      diplomaFile: finishedBachillerato === "si" ? diploma : undefined,
+      gradesCertificateFile: finishedBachillerato === "no" ? gradesCertificate : undefined,
+      firmaProtagonista: sigCanvas.current?.isEmpty() ? (enrollment as Register)?.firmaProtagonista : sigCanvas.current?.toDataURL("image/png"),
+      userId: enrollment ? (enrollment as PrismaRegister).userId : user?.id || null,
+      user: enrollment ? (enrollment as Register).user : { name: user?.name || null },
+    };
 
     if (!isUnderage) {
       if (!enrollmentData.carreraTecnica || String(enrollmentData.carreraTecnica).trim() === "") {
@@ -520,7 +547,11 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
                       <FormItem>
                         <FormLabel>Nombres</FormLabel>
                         <FormControl>
-                          <Input placeholder="Nombres del estudiante" {...field} autoCapitalize="words" />
+                          <Input
+                            placeholder="Nombres del estudiante"
+                            {...field}
+                            onChange={(e) => field.onChange(capitalizeWords(e.target.value))}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -533,7 +564,11 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
                       <FormItem>
                         <FormLabel>Apellidos</FormLabel>
                         <FormControl>
-                          <Input placeholder="Apellidos del estudiante" {...field} autoCapitalize="words" />
+                          <Input
+                            placeholder="Apellidos del estudiante"
+                            {...field}
+                            onChange={(e) => field.onChange(capitalizeWords(e.target.value))}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -619,7 +654,11 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
                           Cédula <span className="text-muted-foreground text-xs">(Opcional)</span>
                         </FormLabel>
                         <FormControl>
-                          <Input placeholder="Número de cédula" {...field} />
+                          <Input
+                            placeholder="Número de cédula"
+                            {...field}
+                            onChange={(e) => field.onChange(formatCedula(e.target.value))}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -875,7 +914,11 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
                       <FormItem>
                         <FormLabel>Nombres y Apellidos</FormLabel>
                         <FormControl>
-                          <Input placeholder="Nombre completo" {...field} autoCapitalize="words" />
+                          <Input
+                            placeholder="Nombre completo"
+                            {...field}
+                            onChange={(e) => field.onChange(capitalizeWords(e.target.value))}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -888,7 +931,11 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
                       <FormItem>
                         <FormLabel>Parentesco</FormLabel>
                         <FormControl>
-                          <Input placeholder="Ej: Madre, Padre, Tío" {...field} autoCapitalize="words" />
+                          <Input
+                            placeholder="Ej: Madre, Padre, Tío"
+                            {...field}
+                            onChange={(e) => field.onChange(capitalizeWords(e.target.value))}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -971,7 +1018,7 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
                           name="cedulaFileReverso"
                           render={({ field }) => (
                             <FormItem>
-                               <FormLabel>Lado trasero</FormLabel>
+                              <FormLabel>Lado trasero</FormLabel>
                               <ImageDropzone field={field} icon={FaRegCreditCard} label="Reverso" />
                               <FormMessage />
                             </FormItem>
@@ -1044,9 +1091,9 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
                       />
                     )}
 
-                       <FormDescription>
-                              De no haber culminado los estudios de bachillerato, adjunte el certificado de notas del tercer año. En caso de haberlos finalizado, Adjunte su diploma de grado.  (fotografia)
-                            </FormDescription>
+                    <FormDescription>
+                      De no haber culminado los estudios de bachillerato, adjunte el certificado de notas del tercer año. En caso de haberlos finalizado, Adjunte su diploma de grado. (fotografia)
+                    </FormDescription>
                   </div>
                 </div>
 

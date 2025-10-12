@@ -344,6 +344,33 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
   const finishedBachSelected = watch("finishedBachillerato") === "si";
   const birthDateValue = watch("birthDate");
   const carreraValue = watch("carreraTecnica");
+    const formatCedula = (value: string) => {
+    if (!value) return "";
+    const cleaned = value.replace(/[^0-9A-Z]/gi, "").toUpperCase();
+    const parts = [];
+
+    if (cleaned.length > 0) {
+      parts.push(cleaned.substring(0, 3));
+    }
+    if (cleaned.length > 3) {
+      parts.push(cleaned.substring(3, 9));
+    }
+    if (cleaned.length > 9) {
+      parts.push(cleaned.substring(9, 14));
+    }
+
+    return parts.join("-");
+  };
+
+  const capitalizeWords = (value: string) => {
+    if (!value) return "";
+    return value
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
 
   useEffect(() => {
     if (birthDateValue) {
@@ -514,7 +541,11 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                       <FormItem>
                         <FormLabel>Nombres</FormLabel>
                         <FormControl>
-                          <Input placeholder="Nombres del estudiante" {...field} autoCapitalize="words" />
+                          <Input
+                            placeholder="Nombres del estudiante"
+                            {...field}
+                            onChange={(e) => field.onChange(capitalizeWords(e.target.value))}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -527,7 +558,11 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                       <FormItem>
                         <FormLabel>Apellidos</FormLabel>
                         <FormControl>
-                          <Input placeholder="Apellidos del estudiante" {...field} autoCapitalize="words" />
+                          <Input
+                            placeholder="Apellidos del estudiante"
+                            {...field}
+                            onChange={(e) => field.onChange(capitalizeWords(e.target.value))}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -613,7 +648,15 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                           Cédula <span className="text-muted-foreground text-xs">(Opcional)</span>
                         </FormLabel>
                         <FormControl>
-                          <Input placeholder="Número de cédula" {...field} />
+                          <Input
+                            placeholder=" Número de cédula"
+                            {...field}
+                            value={field.value || ""}
+                            onChange={(e) => {
+                              const formatted = formatCedula(e.target.value);
+                              field.onChange(formatted);
+                            }}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -869,7 +912,11 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                       <FormItem>
                         <FormLabel>Nombres y Apellidos</FormLabel>
                         <FormControl>
-                          <Input placeholder="Nombre completo" {...field} autoCapitalize="words" />
+                          <Input
+                            placeholder="Nombre completo"
+                            {...field}
+                            onChange={(e) => field.onChange(capitalizeWords(e.target.value))}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -882,7 +929,11 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                       <FormItem>
                         <FormLabel>Parentesco</FormLabel>
                         <FormControl>
-                          <Input placeholder="Ej: Madre, Padre, Tío" {...field} autoCapitalize="words" />
+                          <Input
+                            placeholder="Ej: Madre, Padre, Tío"
+                            {...field}
+                            onChange={(e) => field.onChange(capitalizeWords(e.target.value))}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
