@@ -3,7 +3,7 @@ import StatsCards from "@/components/dashboard/stats-cards";
 import RegisterChart from "@/components/dashboard/register-chart";
 import { getEnrollmentStats } from "@/lib/actions";
 import RegisterListView from "@/components/dashboard/register-list-view";
-import EnrollmentsByCareer from "@/components/dashboard/enrollments-by-career"; 
+import EnrollmentsByCareer from "@/components/dashboard/enrollments-by-career";
 import EnrollmentsByMunicipality from "@/components/dashboard/Enrollments-by-municipality";
 import EnrollmentsByAcademicLevel from "@/components/dashboard/enrollments-by-academic-level";
 import EnrollmentsByAge from "@/components/dashboard/enrollments-by-age";
@@ -25,27 +25,30 @@ export default async function Home() {
       
       <StatsCards stats={stats} />
 
+      {/* --- FILA MODIFICADA --- */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="col-span-1 lg:col-span-2">
+        {/* Tarjeta del gráfico de meses */}
+        <Card className="col-span-1 lg:col-span-2 flex flex-col h-[450px]">
           <CardHeader>
-            <CardTitle>Matrículas en los Últimos 12 Meses</CardTitle>
+            <CardTitle>Matrículas en los Meses</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex-1">
             <RegisterChart data={stats.monthlyEnrollments} />
           </CardContent>
         </Card>
 
-         <Card className="col-span-1">
+        {/* Tarjeta de matrículas por carrera */}
+        <Card className="col-span-1 flex flex-col h-[450px]">
           <CardHeader>
             <CardTitle>Matrículas por carrera</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex-1 overflow-y-auto">
             <EnrollmentsByCareer data={stats.enrollmentsByCareer} />
           </CardContent>
         </Card>
       </div>
         
-      <div className="grid grid-cols-1  gap-6">
+      <div className="grid grid-cols-1 gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Estudiantes Matriculados Recientemente</CardTitle>

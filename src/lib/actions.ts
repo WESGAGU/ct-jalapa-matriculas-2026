@@ -309,10 +309,6 @@ export async function updateEnrollment(id: string, data: Partial<Omit<Register, 
       
       const { url, publicId } = await uploadImage(newValue);
       
-      // ✅ **CORRECCIÓN AQUÍ: Eliminado `as any`**
-      // TypeScript infiere correctamente que `field` es una de las `RegisterImageKeys`,
-      // y que el tipo de `url` (`string | null`) es asignable a las propiedades
-      // correspondientes en `Prisma.RegisterUpdateInput`.
       updateData[field] = url;
 
       if (publicId) newlyUploadedPublicIds.push(publicId);
@@ -429,14 +425,35 @@ export async function getEnrollmentStats() {
     where: { createdAt: { gte: startOfMonth } },
   });
 
+  // --- LÓGICA MODIFICADA PARA EL GRÁFICO ---
+  const startDate = new Date(2025, 9, 1); // Octubre de 2025 (mes 9)
+  const today = new Date();
+
+  // Calcular el número de meses desde la fecha de inicio hasta hoy
+  const yearDiff = today.getFullYear() - startDate.getFullYear();
+  const monthDiff = today.getMonth() - startDate.getMonth();
+  const totalMonthsToShow = yearDiff * 12 + monthDiff + 1;
+
   const monthlyEnrollments = await Promise.all(
-    Array.from({ length: 12 }).map(async (_, i) => {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const month = date.toLocaleString('es-NI', { month: 'short' });
+    Array.from({ length: totalMonthsToShow > 0 ? totalMonthsToShow : 0 }).map(async (_, i) => {
+      // Calculamos la fecha para cada mes en el rango
+      const date = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
+
+      // Formateamos el nombre para que incluya mes y año (ej: "oct. 2025")
+      const monthName = date.toLocaleString('es-NI', { month: 'short' });
+      const year = date.getFullYear();
+      const formattedName = `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${year}`;
+
+      // Definimos el inicio y fin de ese mes específico
       const start = new Date(date.getFullYear(), date.getMonth(), 1);
       const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-      const count = await prisma.register.count({ where: { createdAt: { gte: start, lte: end } } });
-      return { name: `${month.charAt(0).toUpperCase()}${month.slice(1)}.`, total: count };
+      end.setHours(23, 59, 59, 999);
+
+      const count = await prisma.register.count({
+        where: { createdAt: { gte: start, lte: end } },
+      });
+
+      return { name: formattedName, total: count };
     })
   );
   
@@ -490,7 +507,7 @@ export async function getEnrollmentStats() {
   return {
     totalEnrollments,
     monthlyTotal,
-    monthlyEnrollments: monthlyEnrollments.reverse(),
+    monthlyEnrollments, // Ya no es necesario invertirlo
     enrollmentsByCareer,
     enrollmentsByLocation,
     enrollmentsByAcademicLevel,
