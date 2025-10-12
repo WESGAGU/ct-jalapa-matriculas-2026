@@ -101,7 +101,7 @@ const careerGalleries = {
     "/agropecuaria/img14.jpg",
   ],
   Agronomía: [
-    "/agronomia/img1.jpg ",
+    "/agronomia/img1.jpg",
     "/agronomia/img2.jpg",
     "/agronomia/img3.jpg",
     "/agronomia/img4.jpg",
