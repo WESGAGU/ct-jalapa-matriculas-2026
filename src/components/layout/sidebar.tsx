@@ -118,7 +118,7 @@ export default function AppSidebar() {
         isCollapsed ? 'justify-center' : 'justify-start'
       )}>
          <GraduationCap className="h-8 w-8 text-primary flex-shrink-0" />
-         <h1 className={cn("text-xl font-bold transition-opacity duration-300", isCollapsed ? "opacity-0 w-0" : "opacity-100")}>CETA JALAPA</h1>
+         <h1 className={cn("text-xl font-bold transition-opacity duration-300", isCollapsed ? "opacity-0 w-0" : "opacity-100")}>CT JALAPA</h1>
       </div>
       <nav className="flex-1 p-4 space-y-2">
         {menuItems.map(renderMenuItem)}

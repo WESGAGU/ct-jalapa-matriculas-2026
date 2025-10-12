@@ -31,6 +31,7 @@ import {
   MoreHorizontal,
   Search,
   X,
+  Loader2, // Importar Loader2
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -40,7 +41,7 @@ import {
   getUsers,
 } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
-import { Register, User } from "@/lib/types"; // Asegúrate que User esté bien definido en types.ts
+import { Register, User } from "@/lib/types";
 import { getPendingEnrollments } from "@/lib/storage";
 import {
   DropdownMenu,
@@ -58,10 +59,30 @@ import {
   DialogFooter,
 } from "../ui/dialog";
 import { EnrollmentPDF } from "./print-sheet-register-estudent";
-import { PDFViewer, PDFDownloadLink } from "@react-pdf/renderer";
+import { PDFViewer, PDFDownloadLink, pdf } from "@react-pdf/renderer"; // Importar 'pdf'
 import Swal from "sweetalert2";
 import { Career, Shift } from "@prisma/client";
-import { useCurrentUser } from "@/hooks/use-current-user"; // <<--- 1. IMPORTAR HOOK DE USUARIO
+import { useCurrentUser } from "@/hooks/use-current-user";
+
+// --- HOOK PARA DETECTAR MÓVIL (igual que en la página de reportes) ---
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const checkDevice = () => {
+        const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        setIsMobile(isMobileDevice);
+      };
+      checkDevice();
+      window.addEventListener('resize', checkDevice);
+      return () => window.removeEventListener('resize', checkDevice);
+    }
+  }, []);
+
+  return isMobile;
+}
+
 
 // Define un tipo más completo para el usuario, incluyendo el rol
 type UserWithRole = User & {
@@ -73,41 +94,38 @@ const EnrollmentActions = ({
   enrollment,
   onDelete,
   onView,
-  currentUser, // <<--- 2. AÑADIR currentUser COMO PROP
+  currentUser,
+  isViewing, // Estado para mostrar loader
 }: {
   enrollment: Register;
   onDelete: (id: string) => void;
   onView: (enrollment: Register) => void;
-  currentUser: UserWithRole | null; // <<--- TIPO PARA currentUser
+  currentUser: UserWithRole | null;
+  isViewing: boolean; // Prop para saber si se está generando el PDF
 }) => {
-  // --- LÓGICA DE PERMISOS ---
   const isAdmin = currentUser?.role === "ADMIN";
   const isOwner = currentUser?.id === enrollment.userId;
-  
-  // El usuario puede editar/eliminar si:
-  // 1. Es un administrador (puede hacer todo).
-  // 2. O, si el registro le pertenece (userId coincide).
   const canEditDelete = isAdmin || isOwner;
-
-  // Lógica específica para registros con userId === null
-  // Solo el admin puede gestionar estos.
   const canManageUnassigned = isAdmin && enrollment.userId === null;
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon">
-          <MoreHorizontal className="h-4 w-4" />
+        <Button variant="ghost" size="icon" disabled={isViewing}>
+          {isViewing ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
           <span className="sr-only">Abrir menú</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {/* La acción de "Ver" está disponible para todos */}
-        <DropdownMenuItem onClick={() => onView(enrollment)}>
-          <Eye className="mr-2 h-4 w-4" /> Ver
+        <DropdownMenuItem onClick={() => onView(enrollment)} disabled={isViewing}>
+          {isViewing ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Eye className="mr-2 h-4 w-4" />
+          )}
+          Ver
         </DropdownMenuItem>
 
-        {/* --- 3. RENDERIZADO CONDICIONAL DE ACCIONES --- */}
         {(canEditDelete || canManageUnassigned) && (
           <>
             <DropdownMenuItem asChild>
@@ -130,18 +148,20 @@ const EnrollmentActions = ({
 
 
 export default function RegisterList() {
-  const { user: currentUser, isLoading: isUserLoading } = useCurrentUser(); // <<--- 4. OBTENER USUARIO ACTUAL
+  const { user: currentUser, isLoading: isUserLoading } = useCurrentUser();
   const [enrollments, setEnrollments] = useState<Register[]>([]);
   const [pendingEnrollments, setPendingEnrollments] = useState<Register[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [enrollmentToView, setEnrollmentToView] = useState<Register | null>(
-    null
-  );
+  const [enrollmentToView, setEnrollmentToView] = useState<Register | null>(null);
   const { toast } = useToast();
   const [isClient, setIsClient] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalEnrollments, setTotalEnrollments] = useState(0);
   const itemsPerPage = 5;
+  
+  // --- NUEVOS ESTADOS Y HOOK ---
+  const isMobile = useIsMobile();
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState<string | null>(null); // Guardar el ID de la matrícula que se está procesando
 
   // Estados para los filtros
   const [searchDate, setSearchDate] = useState("");
@@ -219,6 +239,33 @@ export default function RegisterList() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, isClient]);
+
+  // --- NUEVA FUNCIÓN PARA MANEJAR LA VISTA DEL PDF ---
+  const handleView = async (enrollment: Register) => {
+    if (isMobile) {
+      setIsGeneratingPdf(enrollment.id); // Inicia el loader para este item específico
+      try {
+        const blob = await pdf(<EnrollmentPDF enrollment={enrollment} />).toBlob();
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        // Opcional: revocar la URL para liberar memoria
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch (error) {
+        console.error("Error al generar PDF en móvil:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "No se pudo generar la vista previa del PDF.",
+        });
+      } finally {
+        setIsGeneratingPdf(null); // Detiene el loader
+      }
+    } else {
+      // Comportamiento para escritorio: abrir el Dialog
+      setEnrollmentToView(enrollment);
+    }
+  };
+
 
   const handleDelete = async (id: string) => {
     const result = await Swal.fire({
@@ -307,7 +354,7 @@ export default function RegisterList() {
     setCurrentPage((prev) => Math.min(prev + 1, totalPages));
   };
 
-  if ((isLoading && !isClient) || isUserLoading) { // <<--- 5. MEJORAR LA CONDICIÓN DE CARGA
+  if ((isLoading && !isClient) || isUserLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-full" />
@@ -448,12 +495,12 @@ export default function RegisterList() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {/* 6. PASAR currentUser AL COMPONENTE DE ACCIONES */}
                         <EnrollmentActions
                           enrollment={enrollment}
                           onDelete={handleDelete}
-                          onView={setEnrollmentToView}
+                          onView={handleView} // Usar el nuevo manejador
                           currentUser={currentUser}
+                          isViewing={isGeneratingPdf === enrollment.id} // Pasar estado de carga
                         />
                       </TableCell>
                     </TableRow>
@@ -482,7 +529,6 @@ export default function RegisterList() {
         </Card>
       </div>
 
-      {/* ... (código de la vista móvil sin cambios, pero pasando currentUser) ... */}
       <div className="md:hidden space-y-4">
         <h2 className="text-xl font-bold">
           Matrículas Registradas ({totalEnrollments})
@@ -504,8 +550,9 @@ export default function RegisterList() {
                   <EnrollmentActions
                     enrollment={enrollment}
                     onDelete={handleDelete}
-                    onView={setEnrollmentToView}
-                    currentUser={currentUser} // <<--- 6. PASAR currentUser TAMBIÉN AQUÍ
+                    onView={handleView} // Usar el nuevo manejador
+                    currentUser={currentUser}
+                    isViewing={isGeneratingPdf === enrollment.id} // Pasar estado de carga
                   />
                 </div>
               </CardHeader>
@@ -567,7 +614,7 @@ export default function RegisterList() {
         </div>
       </div>
 
-      {/* ... (código del Dialog sin cambios) ... */}
+      {/* El Dialog se mantiene igual, solo se mostrará en escritorio */}
       <Dialog
         open={!!enrollmentToView}
         onOpenChange={(open) => !open && setEnrollmentToView(null)}

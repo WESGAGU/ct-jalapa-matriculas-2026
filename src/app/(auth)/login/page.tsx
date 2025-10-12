@@ -55,7 +55,7 @@ export default function LoginPage() {
             <div className="mx-auto bg-primary text-primary-foreground p-3 rounded-full w-fit">
                 <GraduationCap className="h-8 w-8" />
             </div>
-            <CardTitle className="text-2xl mt-4">CETA JALAPA</CardTitle>
+            <CardTitle className="text-2xl mt-4">CT JALAPA</CardTitle>
             <CardDescription>Inicia sesión para acceder al panel</CardDescription>
         </CardHeader>
         <CardContent>

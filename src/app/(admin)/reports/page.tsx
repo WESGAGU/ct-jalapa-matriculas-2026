@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { PDFDownloadLink, PDFViewer } from '@react-pdf/renderer';
+import { PDFDownloadLink, PDFViewer, pdf } from '@react-pdf/renderer'; // Importar 'pdf'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Download, Loader2, Eye, X } from 'lucide-react';
@@ -10,10 +10,36 @@ import { getEnrollmentStats } from '@/lib/actions';
 
 type StatsData = Awaited<ReturnType<typeof getEnrollmentStats>>;
 
+// Hook mejorado para detectar si es un dispositivo móvil
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    // Comprueba si 'window' está definido para evitar errores en el servidor (SSR)
+    if (typeof window !== "undefined") {
+      const checkDevice = () => {
+        // Expresión regular para detectar los user agents de móviles más comunes
+        const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        setIsMobile(isMobileDevice);
+      };
+
+      checkDevice();
+      window.addEventListener('resize', checkDevice);
+      
+      return () => window.removeEventListener('resize', checkDevice);
+    }
+  }, []);
+
+  return isMobile;
+}
+
+
 export default function ReportsPage() {
   const [stats, setStats] = useState<StatsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
+  const [isGeneratingPreview, setIsGeneratingPreview] = useState(false); // Estado para el loader del preview
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     async function loadStats() {
@@ -28,6 +54,31 @@ export default function ReportsPage() {
     }
     loadStats();
   }, []);
+
+  // Función para manejar el clic en el botón de previsualización
+  const handlePreview = async () => {
+    if (isMobile) {
+      if (!stats) return;
+      setIsGeneratingPreview(true);
+      try {
+        // 1. Genera el PDF como un Blob
+        const blob = await pdf(<StatisticalReportPDF stats={stats} />).toBlob();
+        // 2. Crea una URL para el Blob
+        const url = URL.createObjectURL(blob);
+        // 3. Abre la URL en una nueva pestaña
+        window.open(url, '_blank');
+        // Opcional: revocar la URL después de un tiempo para liberar memoria
+        setTimeout(() => URL.revokeObjectURL(url), 1000); 
+      } catch (error) {
+        console.error("Error al generar o abrir el PDF:", error);
+      } finally {
+        setIsGeneratingPreview(false);
+      }
+    } else {
+      // En escritorio, solo muestra u oculta el visor
+      setShowPreview(!showPreview);
+    }
+  };
 
   return (
     <>
@@ -50,10 +101,13 @@ export default function ReportsPage() {
                 Cargando datos...
               </Button>
             ) : (
-              // SOLUCIÓN: Cambiado a grid para un comportamiento de bloque en móviles
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-md">
-                <Button variant="outline" onClick={() => setShowPreview(!showPreview)}>
-                  <Eye className="mr-2 h-4 w-4" />
+                <Button variant="outline" onClick={handlePreview} disabled={isGeneratingPreview}>
+                  {isGeneratingPreview ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Eye className="mr-2 h-4 w-4" />
+                  )}
                   {showPreview ? 'Ocultar Previsualización' : 'Ver Previsualización'}
                 </Button>
                 
@@ -78,7 +132,8 @@ export default function ReportsPage() {
         </CardContent>
       </Card>
 
-      {showPreview && !isLoading && stats && (
+      {/* El visor solo se renderiza en escritorio y si showPreview es true */}
+      {showPreview && !isMobile && !isLoading && stats && (
         <div className="mt-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
