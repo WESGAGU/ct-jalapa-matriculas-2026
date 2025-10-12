@@ -10,6 +10,7 @@ import {
   PanelLeftOpen,
   Users,
   FileChartColumnIncreasing,
+  BookOpen,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -34,6 +35,11 @@ export const menuItems = [
     href: '/register',
     label: 'Ver Matrículas',
     icon: List,
+  },
+  {
+    href: '/careers',
+    label: 'Carreras',
+    icon: BookOpen, 
   },
   {
     href: '/reports', 

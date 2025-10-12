@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { PDFDownloadLink, PDFViewer } from '@react-pdf/renderer';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, Loader2, Eye } from 'lucide-react';
+import { Download, Loader2, Eye, X } from 'lucide-react';
 import { StatisticalReportPDF } from '@/components/reports/StatisticalReport';
 import { getEnrollmentStats } from '@/lib/actions';
 
@@ -39,8 +39,8 @@ export default function ReportsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg">
-            <h2 className="text-lg font-semibold mb-4">Reporte Estadístico de Matrículas</h2>
+          <div className="flex flex-col items-center justify-center p-4 md:p-8 border-2 border-dashed rounded-lg">
+            <h2 className="text-lg font-semibold mb-4 text-center">Reporte Estadístico de Matrículas</h2>
             <p className="text-muted-foreground mb-6 text-center">
               Este reporte incluye un resumen general, matrículas por carrera, por municipio, y más.
             </p>
@@ -50,7 +50,8 @@ export default function ReportsPage() {
                 Cargando datos...
               </Button>
             ) : (
-              <div className="flex gap-4">
+              // SOLUCIÓN: Cambiado a grid para un comportamiento de bloque en móviles
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-md">
                 <Button variant="outline" onClick={() => setShowPreview(!showPreview)}>
                   <Eye className="mr-2 h-4 w-4" />
                   {showPreview ? 'Ocultar Previsualización' : 'Ver Previsualización'}
@@ -61,7 +62,7 @@ export default function ReportsPage() {
                   fileName={`Reporte_Estadistico_CETA_Jalapa_${new Date().toLocaleDateString()}.pdf`}
                 >
                   {({ loading }) => (
-                    <Button disabled={loading}>
+                    <Button disabled={loading} className="w-full">
                       {loading ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : (
@@ -80,12 +81,16 @@ export default function ReportsPage() {
       {showPreview && !isLoading && stats && (
         <div className="mt-6">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Previsualización del Reporte</CardTitle>
+              <Button variant="ghost" size="icon" onClick={() => setShowPreview(false)}>
+                <X className="h-4 w-4" />
+                <span className="sr-only">Cerrar previsualización</span>
+              </Button>
             </CardHeader>
             <CardContent>
-                <div style={{ height: '80vh', width: '100%' }}>
-                  <PDFViewer width="100%" height="100%">
+                <div className="h-[60vh] md:h-[80vh] w-full">
+                  <PDFViewer width="100%" height="100%" style={{ border: 'none' }}>
                     <StatisticalReportPDF stats={stats} />
                   </PDFViewer>
                 </div>
