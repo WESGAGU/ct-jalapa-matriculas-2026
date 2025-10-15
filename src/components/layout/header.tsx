@@ -1,4 +1,3 @@
-// src/components/layout/header.tsx
 'use client';
 
 import Link from 'next/link';
@@ -13,9 +12,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../u
 import { menuItems } from './sidebar';
 import { usePathname, useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
-import placeholderImages from '@/lib/placeholder-images.json';
-import Image from 'next/image';
-import { useCurrentUser } from '@/hooks/use-current-user'; // Importa el hook de usuario
+import { useCurrentUser } from '@/hooks/use-current-user';
 
 // Wrapper to ensure a component only renders on the client
 const ClientOnly: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -35,8 +32,8 @@ const ClientOnly: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 export default function Header() {
   const [installPrompt, handleInstallClick] = useInstallPrompt();
-  const userAvatar = placeholderImages.userAvatar;
   const router = useRouter();
+  const { user } = useCurrentUser(); // Obtiene el usuario actual
 
   const handleLogout = async () => {
     await fetch('/api/logout', {
@@ -44,6 +41,14 @@ export default function Header() {
     });
     router.push('/login');
     router.refresh();
+  };
+
+  // Función para obtener las iniciales
+  const getUserInitials = (name?: string | null) => {
+    if (!name) return 'U';
+    const parts = name.split(' ');
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return (parts[0].charAt(0) + (parts[1]?.charAt(0) || '')).toUpperCase();
   };
 
   return (
@@ -63,12 +68,15 @@ export default function Header() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Avatar className='cursor-pointer'>
-                    <Image src={userAvatar.src} alt={userAvatar.alt} width={40} height={40} data-ai-hint={userAvatar.hint} />
-                    <AvatarFallback>U</AvatarFallback>
+                    {/* --- CAMBIO AQUÍ --- */}
+                    {/* Se añaden clases para el color de fondo en tema claro y texto blanco */}
+                    <AvatarFallback className="bg-slate-900 text-white dark:bg-muted dark:text-muted-foreground">
+                      {getUserInitials(user?.name)}
+                    </AvatarFallback>
                 </Avatar>
             </DropdownMenuTrigger>
             <DropdownMenuContent align='end'>
-                <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
+                <DropdownMenuLabel>{user?.name || 'Mi Cuenta'}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                     <Link href="/settings">Configuración</Link>
@@ -86,7 +94,6 @@ export default function Header() {
 export function MobileHeader() {
     const [installPrompt, handleInstallClick] = useInstallPrompt();
     const pathname = usePathname();
-    const userAvatar = placeholderImages.userAvatar;
     const router = useRouter();
     const { user } = useCurrentUser(); // Obtiene la información del usuario
 
@@ -106,6 +113,14 @@ export function MobileHeader() {
       return true;
     });
 
+    // Función para obtener las iniciales
+    const getUserInitials = (name?: string | null) => {
+      if (!name) return 'U';
+      const parts = name.split(' ');
+      if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+      return (parts[0].charAt(0) + (parts[1]?.charAt(0) || '')).toUpperCase();
+    };
+
     return (
         <header className="md:hidden bg-card border-b sticky top-0 z-40">
              <div className="container mx-auto px-4 md:px-6">
@@ -121,11 +136,10 @@ export function MobileHeader() {
                          <SheetHeader className="p-4 border-b">
                             <div className="flex items-center gap-2">
                               <GraduationCap className="h-8 w-8 text-primary" />
-                               <SheetTitle className="text-xl font-bold">CETA JALAPA</SheetTitle>
+                               <SheetTitle className="text-xl font-bold">CT JALAPA</SheetTitle>
                             </div>
                          </SheetHeader>
                          <div className="p-4 space-y-2">
-                           {/* Renderiza los elementos filtrados */}
                            {filteredMenuItems.map((item) => (
                               <SheetTrigger asChild key={item.href}>
                                 <Button asChild variant={pathname === item.href ? 'secondary' : 'ghost'} className="w-full justify-start">
@@ -154,12 +168,14 @@ export function MobileHeader() {
                        <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Avatar className='cursor-pointer h-8 w-8'>
-                                <Image src={userAvatar.src} alt={userAvatar.alt} width={32} height={32} data-ai-hint={userAvatar.hint} />
-                                <AvatarFallback>U</AvatarFallback>
+                                {/* --- CAMBIO AQUÍ --- */}
+                                <AvatarFallback className="bg-slate-900 text-white dark:bg-muted dark:text-muted-foreground">
+                                  {getUserInitials(user?.name)}
+                                </AvatarFallback>
                             </Avatar>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align='end'>
-                            <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
+                            <DropdownMenuLabel>{user?.name || 'Mi Cuenta'}</DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem asChild>
                                 <Link href="/settings">Configuración</Link>
