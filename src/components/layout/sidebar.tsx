@@ -18,8 +18,10 @@ import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { useSidebar } from '@/hooks/use-sidebar';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
+import { useCurrentUser } from '@/hooks/use-current-user'; // Importa el hook para obtener el usuario
 
 // Definimos la lista de items del menú, incluyendo "Usuarios"
+// Se añade una propiedad `adminOnly` para un control más sencillo
 export const menuItems = [
   {
     href: '/',
@@ -50,12 +52,14 @@ export const menuItems = [
     href: '/users', 
     label: 'Usuarios',
     icon: Users,
+    adminOnly: true, // Esta ruta solo será visible para administradores
   },
 ];
 
 export default function AppSidebar() {
   const pathname = usePathname();
   const sidebar = useSidebar();
+  const { user } = useCurrentUser(); // Obtiene la información del usuario actual
   const [isCollapsed, setIsCollapsed] = useState(sidebar.isCollapsed);
   const [hasMounted, setHasMounted] = useState(false);
 
@@ -75,6 +79,14 @@ export default function AppSidebar() {
   if (!hasMounted) {
     return null; // Don't render on the server to avoid hydration mismatch
   }
+
+  // Filtra los elementos del menú basados en el rol del usuario
+  const filteredMenuItems = menuItems.filter(item => {
+    if (item.adminOnly) {
+      return user?.role === 'ADMIN';
+    }
+    return true; // Muestra todos los demás elementos
+  });
 
   const renderMenuItem = (item: typeof menuItems[0]) => {
     const isActive = pathname === item.href;
@@ -121,7 +133,8 @@ export default function AppSidebar() {
          <h1 className={cn("text-xl font-bold transition-opacity duration-300", isCollapsed ? "opacity-0 w-0" : "opacity-100")}>CT JALAPA</h1>
       </div>
       <nav className="flex-1 p-4 space-y-2">
-        {menuItems.map(renderMenuItem)}
+        {/* Renderiza los elementos filtrados */}
+        {filteredMenuItems.map(renderMenuItem)}
       </nav>
       <div className="p-4 border-t">
         <Button variant="ghost" onClick={toggleSidebar} className="w-full justify-center">

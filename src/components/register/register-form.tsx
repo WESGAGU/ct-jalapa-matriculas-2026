@@ -162,6 +162,7 @@ const formSchema = z
   .superRefine((data, ctx) => {
     const isEditMode = "id" in data && !!(data as { id?: string }).id;
     const hasCedula = data.hasCedula === "si";
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const finished = data.finishedBachillerato === "si";
 
     if (data.birthDate && !isAtLeast14YearsOld(data.birthDate)) {
@@ -206,6 +207,7 @@ const formSchema = z
         }
       }
 
+      /*
       if (finished) {
         if (!data.diplomaFile) {
           ctx.addIssue({
@@ -223,6 +225,7 @@ const formSchema = z
           });
         }
       }
+      */
     }
   });
 
@@ -1102,7 +1105,7 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
                     Firma del Estudiante <span className="text-muted-foreground text-xs">(Opcional)</span>
                   </FormLabel>
                   <div className="relative w-full h-48 rounded-md border border-input">
-                    <SignaturePad  // @ts-expect-error: 'ref' is not a valid prop for this component.
+                    <SignaturePad   // @ts-expect-error: 'ref' is not a valid prop for this component.
                       ref={sigCanvas}
                       penColor={signatureColor}
                       canvasProps={{ className: "w-full h-full rounded-md bg-white dark:bg-gray-900" }} // <-- ❗ CAMBIO 2: Fondo siempre blanco

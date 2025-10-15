@@ -15,6 +15,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 import placeholderImages from '@/lib/placeholder-images.json';
 import Image from 'next/image';
+import { useCurrentUser } from '@/hooks/use-current-user'; // Importa el hook de usuario
 
 // Wrapper to ensure a component only renders on the client
 const ClientOnly: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -87,6 +88,7 @@ export function MobileHeader() {
     const pathname = usePathname();
     const userAvatar = placeholderImages.userAvatar;
     const router = useRouter();
+    const { user } = useCurrentUser(); // Obtiene la información del usuario
 
     const handleLogout = async () => {
         await fetch('/api/logout', {
@@ -95,6 +97,14 @@ export function MobileHeader() {
         router.push('/login');
         router.refresh();
       };
+    
+    // Filtra los elementos del menú para el sidebar móvil
+    const filteredMenuItems = menuItems.filter(item => {
+      if (item.adminOnly) {
+        return user?.role === 'ADMIN';
+      }
+      return true;
+    });
 
     return (
         <header className="md:hidden bg-card border-b sticky top-0 z-40">
@@ -115,7 +125,8 @@ export function MobileHeader() {
                             </div>
                          </SheetHeader>
                          <div className="p-4 space-y-2">
-                           {menuItems.map((item) => (
+                           {/* Renderiza los elementos filtrados */}
+                           {filteredMenuItems.map((item) => (
                               <SheetTrigger asChild key={item.href}>
                                 <Button asChild variant={pathname === item.href ? 'secondary' : 'ghost'} className="w-full justify-start">
                                   <Link href={item.href}>

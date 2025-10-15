@@ -161,6 +161,7 @@ const formSchema = z
   .superRefine((data, ctx) => {
     const isEditMode = "id" in data && !!(data as { id?: string }).id;
     const hasCedula = data.hasCedula === "si";
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const finished = data.finishedBachillerato === "si";
 
     if (data.birthDate && !isAtLeast14YearsOld(data.birthDate)) {
@@ -205,6 +206,7 @@ const formSchema = z
         }
       }
 
+      /*
       if (finished) {
         if (!data.diplomaFile) {
           ctx.addIssue({
@@ -222,6 +224,7 @@ const formSchema = z
           });
         }
       }
+      */
     }
   });
 
