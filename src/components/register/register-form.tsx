@@ -160,7 +160,9 @@ const formSchema = z
     firmaProtagonista: z.string().optional(),
   })
   .superRefine((data, ctx) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const isEditMode = "id" in data && !!(data as { id?: string }).id;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const hasCedula = data.hasCedula === "si";
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const finished = data.finishedBachillerato === "si";
@@ -181,6 +183,7 @@ const formSchema = z
       }
     }
 
+    /*
     if (!isEditMode) {
       if (hasCedula) {
         if (!data.cedulaFileFrente) {
@@ -207,7 +210,7 @@ const formSchema = z
         }
       }
 
-      /*
+      
       if (finished) {
         if (!data.diplomaFile) {
           ctx.addIssue({
@@ -225,8 +228,9 @@ const formSchema = z
           });
         }
       }
-      */
+      
     }
+    */
   });
 
 type RegisterFormValues = z.infer<typeof formSchema>;
