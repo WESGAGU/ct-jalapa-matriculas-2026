@@ -35,7 +35,8 @@ function getPublicIdFromUrl(url: string | undefined | null): string | null {
 
 async function uploadImage(dataUri: string | undefined | null): Promise<{ url: string | null; publicId: string | null }> {
   if (!dataUri || !dataUri.startsWith('data:image')) {
-    return { url: dataUri || null, publicId: null };
+    // MODIFICADO: Devolver null para url y publicId si no hay data URI
+    return { url: null, publicId: null };
   }
   try {
     const result = await cloudinary.uploader.upload(dataUri, {
@@ -88,15 +89,16 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
   const uploadedImagePublicIds: string[] = [];
 
   try {
-    const uploadAndTrack = async (dataUri: string | undefined | null) => {
+    const uploadAndTrack = async (dataUri: string | undefined | null): Promise<string | null> => { // MODIFICADO: Tipo de retorno explícito
+      // MODIFICADO: Si no hay data URI, retorna null directamente.
       if (!dataUri || !dataUri.startsWith('data:image')) {
-        return dataUri;
+        return null;
       }
       const { url, publicId } = await uploadImage(dataUri);
       if (publicId) {
         uploadedImagePublicIds.push(publicId);
       }
-      return url;
+      return url; // `url` ya es `string | null` gracias a `uploadImage`
     };
     
     const cedulaFrenteUrl = await uploadAndTrack(rest.cedulaFileFrente);
@@ -112,6 +114,7 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
       ...dataWithoutCareer,
       id,
       birthDate: new Date(enrollment.birthDate),
+      // MODIFICADO: Asegurarse de que los valores sean `string | null`, no `undefined`
       cedulaFileFrente: cedulaFrenteUrl,
       cedulaFileReverso: cedulaReversoUrl,
       birthCertificateFile: birthCertificateUrl,
@@ -168,6 +171,8 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
         throw new Error('Error: El correo electrónico ingresado ya existe.');
       }
     }
+    // MODIFICADO: Loguear el error completo en el servidor para facilitar la depuración
+    console.error("Error completo en addEnrollment:", error);
     throw error;
   }
 }
@@ -341,6 +346,8 @@ export async function updateEnrollment(id: string, data: Partial<Omit<Register, 
       if (newlyUploadedPublicIds.length > 0) {
           await cloudinary.api.delete_resources(newlyUploadedPublicIds);
       }
+      // MODIFICADO: Loguear el error completo en el servidor
+      console.error("Error completo en updateEnrollment:", error);
       throw error;
   }
 }
