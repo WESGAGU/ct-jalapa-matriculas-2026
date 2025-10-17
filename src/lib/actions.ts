@@ -546,3 +546,51 @@ export async function getUsers() {
     return [];
   }
 }
+
+// ▼▼▼ FUNCIONES PARA LOS REPORTES  ▼▼▼
+
+export async function getAllEnrollments(): Promise<Register[]> {
+  try {
+    const enrollments = await prisma.register.findMany({
+      orderBy: {
+        career: {
+          name: 'asc'
+        },
+      },
+      include: {
+        user: { select: { name: true } },
+        career: true,
+      },
+    });
+    // @typescript-eslint/ban-ts-comment
+    return enrollments;
+  } catch (error) {
+    console.error("Error fetching all enrollments:", error);
+    throw new Error("No se pudieron obtener todas las matrículas.");
+  }
+}
+
+export async function getEnrollmentsByCareer(careerName: string): Promise<Register[]> {
+  if (!careerName) {
+    return [];
+  }
+  try {
+    const enrollments = await prisma.register.findMany({
+      where: {
+        carreraTecnica: careerName,
+      },
+      orderBy: {
+        apellidos: 'asc',
+      },
+      include: {
+        user: { select: { name: true } },
+        career: true,
+      },
+    });
+    // @typescript-eslint/ban-ts-comment
+    return enrollments;
+  } catch (error) {
+    console.error(`Error fetching enrollments for career ${careerName}:`, error);
+    throw new Error("No se pudieron obtener las matrículas para esa carrera.");
+  }
+}
