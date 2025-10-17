@@ -180,7 +180,13 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
 export async function getEnrollments(
   page = 1,
   limit = 5,
-  filters: { date?: string; user?: string; career?: string } = {}
+  filters: { 
+    date?: string; 
+    user?: string; 
+    career?: string;
+    name?: string;
+    documentFilter?: string;
+  } = {}
 ) {
   await new Promise((resolve) => setTimeout(resolve, 500));
   const skip = (page - 1) * limit;
@@ -213,6 +219,57 @@ export async function getEnrollments(
         mode: 'insensitive',
       },
     };
+  }
+
+  // Nuevo filtro por nombre
+  if (filters.name) {
+    where.OR = [
+      {
+        nombres: {
+          contains: filters.name,
+          mode: 'insensitive',
+        },
+      },
+      {
+        apellidos: {
+          contains: filters.name,
+          mode: 'insensitive',
+        },
+      },
+    ];
+  }
+
+  // Nuevo filtro por documentos - CORREGIDO
+  if (filters.documentFilter) {
+    if (filters.documentFilter === 'without') {
+      // Registros sin NINGÚN documento
+      where.AND = [
+        { cedulaFileFrente: null },
+        { cedulaFileReverso: null },
+        { birthCertificateFile: null },
+        { diplomaFile: null },
+        { gradesCertificateFile: null },
+      ];
+    } else if (filters.documentFilter === 'with') {
+      // Registros con AL MENOS UN documento
+      where.OR = [
+        { cedulaFileFrente: { not: null } },
+        { cedulaFileReverso: { not: null } },
+        { birthCertificateFile: { not: null } },
+        { diplomaFile: { not: null } },
+        { gradesCertificateFile: { not: null } },
+      ];
+    } else if (filters.documentFilter === 'complete') {
+      // Registros con TODOS los documentos
+      where.AND = [
+        { cedulaFileFrente: { not: null } },
+        { cedulaFileReverso: { not: null } },
+        { birthCertificateFile: { not: null } },
+        { diplomaFile: { not: null } },
+        { gradesCertificateFile: { not: null } },
+      ];
+    }
+    // "all" no aplica ningún filtro de documentos
   }
 
   const [enrollments, total] = await Promise.all([
@@ -525,7 +582,8 @@ export async function getEnrollmentStats() {
 export async function getCareers() {
   return await prisma.career.findMany({
     where: { active: true },
-    orderBy: { name: 'asc' },
+    orderBy: { name: 'asc',
+    },
   });
 }
 

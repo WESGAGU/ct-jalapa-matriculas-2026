@@ -29,9 +29,9 @@ import {
   Eye,
   Download,
   MoreHorizontal,
-  Search,
   X,
-  Loader2, // Importar Loader2
+  Loader2,
+  FileText,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -59,30 +59,55 @@ import {
   DialogFooter,
 } from "../ui/dialog";
 import { EnrollmentPDF } from "./print-sheet-register-estudent";
-import { PDFViewer, PDFDownloadLink, pdf } from "@react-pdf/renderer"; // Importar 'pdf'
+import { PDFViewer, PDFDownloadLink, pdf } from "@react-pdf/renderer";
 import Swal from "sweetalert2";
 import { Career, Shift } from "@prisma/client";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
-// --- HOOK PARA DETECTAR MÓVIL (igual que en la página de reportes) ---
+// --- HOOK PARA DETECTAR MÓVIL ---
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const checkDevice = () => {
-        const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const isMobileDevice =
+          /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+            navigator.userAgent
+          );
         setIsMobile(isMobileDevice);
       };
       checkDevice();
-      window.addEventListener('resize', checkDevice);
-      return () => window.removeEventListener('resize', checkDevice);
+      window.addEventListener("resize", checkDevice);
+      return () => window.removeEventListener("resize", checkDevice);
     }
   }, []);
 
   return isMobile;
 }
 
+// --- HOOK PARA DEBOUNCE ---
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
 
 // Define un tipo más completo para el usuario, incluyendo el rol
 type UserWithRole = User & {
@@ -90,18 +115,53 @@ type UserWithRole = User & {
   id?: string;
 };
 
+// --- COMPONENTE MEJORADO PARA INDICADORES DE DOCUMENTOS ---
+const DocumentStatus = ({ enrollment }: { enrollment: Register }) => {
+  const presentDocs = [];
+  if (enrollment.cedulaFileFrente) presentDocs.push("Cédula (Frente)");
+  if (enrollment.cedulaFileReverso) presentDocs.push("Cédula (Reverso)");
+  if (enrollment.birthCertificateFile) presentDocs.push("Cert. Nacimiento");
+  if (enrollment.diplomaFile) presentDocs.push("Diploma");
+  if (enrollment.gradesCertificateFile) presentDocs.push("Cert. de Notas");
+
+  if (presentDocs.length === 0) {
+    return <Badge variant="secondary">Sin documentos</Badge>;
+  }
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger>
+          <Badge variant="outline" className="flex items-center cursor-default border-blue-300 bg-blue-50 text-blue-800">
+            <FileText className="h-4 w-4 mr-1" />
+            {presentDocs.length} documento(s)
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Documentos presentes:</p>
+          <ul className="list-disc list-inside">
+            {presentDocs.map((doc) => (
+              <li key={doc}>{doc}</li>
+            ))}
+          </ul>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
+
 const EnrollmentActions = ({
   enrollment,
   onDelete,
   onView,
   currentUser,
-  isViewing, // Estado para mostrar loader
+  isViewing,
 }: {
   enrollment: Register;
   onDelete: (id: string) => void;
   onView: (enrollment: Register) => void;
   currentUser: UserWithRole | null;
-  isViewing: boolean; // Prop para saber si se está generando el PDF
+  isViewing: boolean;
 }) => {
   const isAdmin = currentUser?.role === "ADMIN";
   const isOwner = currentUser?.id === enrollment.userId;
@@ -112,12 +172,19 @@ const EnrollmentActions = ({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" disabled={isViewing}>
-          {isViewing ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
+          {isViewing ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <MoreHorizontal className="h-4 w-4" />
+          )}
           <span className="sr-only">Abrir menú</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => onView(enrollment)} disabled={isViewing}>
+        <DropdownMenuItem
+          onClick={() => onView(enrollment)}
+          disabled={isViewing}
+        >
           {isViewing ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
@@ -129,7 +196,10 @@ const EnrollmentActions = ({
         {(canEditDelete || canManageUnassigned) && (
           <>
             <DropdownMenuItem asChild>
-              <Link href={`/${enrollment.id}`} className="flex items-center w-full">
+              <Link
+                href={`/${enrollment.id}`}
+                className="flex items-center w-full"
+              >
                 <Edit className="mr-2 h-4 w-4" /> Editar
               </Link>
             </DropdownMenuItem>
@@ -146,37 +216,51 @@ const EnrollmentActions = ({
   );
 };
 
-
 export default function RegisterList() {
   const { user: currentUser, isLoading: isUserLoading } = useCurrentUser();
   const [enrollments, setEnrollments] = useState<Register[]>([]);
   const [pendingEnrollments, setPendingEnrollments] = useState<Register[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [enrollmentToView, setEnrollmentToView] = useState<Register | null>(null);
+  const [enrollmentToView, setEnrollmentToView] = useState<Register | null>(
+    null
+  );
   const { toast } = useToast();
   const [isClient, setIsClient] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalEnrollments, setTotalEnrollments] = useState(0);
   const itemsPerPage = 5;
-  
-  // --- NUEVOS ESTADOS Y HOOK ---
-  const isMobile = useIsMobile();
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState<string | null>(null); // Guardar el ID de la matrícula que se está procesando
 
-  // Estados para los filtros
+  const isMobile = useIsMobile();
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState<string | null>(null);
+
+  // Estados para filtros
   const [searchDate, setSearchDate] = useState("");
   const [searchUser, setSearchUser] = useState("");
   const [searchCareer, setSearchCareer] = useState("");
+  const [searchName, setSearchName] = useState("");
+  const [searchDocumentFilter, setSearchDocumentFilter] = useState("all");
   const [careers, setCareers] = useState<Career[]>([]);
   const [users, setUsers] = useState<{ id: string; name: string | null }[]>([]);
+
+  // Debounce para búsqueda automática
+  const debouncedSearchName = useDebounce(searchName, 500);
+  const debouncedSearchDate = useDebounce(searchDate, 500);
+  const debouncedSearchUser = useDebounce(searchUser, 500);
+  const debouncedSearchCareer = useDebounce(searchCareer, 500);
+  const debouncedSearchDocumentFilter = useDebounce(searchDocumentFilter, 500);
 
   const loadAllData = useCallback(
     async (
       page: number,
-      filters: { date?: string; user?: string; career?: string } = {}
+      filters: { 
+        date?: string; 
+        user?: string; 
+        career?: string;
+        name?: string;
+        documentFilter?: string;
+      } = {}
     ) => {
       setIsLoading(true);
-
       const apiFilters = {
         date: filters.date || undefined,
         user:
@@ -185,8 +269,9 @@ export default function RegisterList() {
           filters.career === "all" || !filters.career
             ? undefined
             : filters.career,
+        name: filters.name || undefined,
+        documentFilter: filters.documentFilter === "all" ? undefined : filters.documentFilter,
       };
-
       try {
         const [serverData, localData, careersData, usersData] =
           await Promise.all([
@@ -217,38 +302,51 @@ export default function RegisterList() {
     setIsClient(true);
   }, []);
 
+  // Efecto para búsqueda automática con debounce
+  useEffect(() => {
+    if (isClient) {
+      loadAllData(currentPage, {
+        date: debouncedSearchDate,
+        user: debouncedSearchUser,
+        career: debouncedSearchCareer,
+        name: debouncedSearchName,
+        documentFilter: debouncedSearchDocumentFilter,
+      });
+    }
+  }, [
+    currentPage,
+    isClient,
+    debouncedSearchDate,
+    debouncedSearchUser,
+    debouncedSearchCareer,
+    debouncedSearchName,
+    debouncedSearchDocumentFilter,
+    loadAllData,
+  ]);
+
   useEffect(() => {
     const handleStorageChange = () =>
       loadAllData(currentPage, {
         date: searchDate,
         user: searchUser,
         career: searchCareer,
+        name: searchName,
+        documentFilter: searchDocumentFilter,
       });
     window.addEventListener("storageUpdated", handleStorageChange);
     return () =>
       window.removeEventListener("storageUpdated", handleStorageChange);
-  }, [loadAllData, currentPage, searchDate, searchUser, searchCareer]);
+  }, [loadAllData, currentPage, searchDate, searchUser, searchCareer, searchName, searchDocumentFilter]);
 
-  useEffect(() => {
-    if (isClient) {
-      loadAllData(currentPage, {
-        date: searchDate,
-        user: searchUser,
-        career: searchCareer,
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, isClient]);
-
-  // --- NUEVA FUNCIÓN PARA MANEJAR LA VISTA DEL PDF ---
   const handleView = async (enrollment: Register) => {
     if (isMobile) {
-      setIsGeneratingPdf(enrollment.id); // Inicia el loader para este item específico
+      setIsGeneratingPdf(enrollment.id);
       try {
-        const blob = await pdf(<EnrollmentPDF enrollment={enrollment} />).toBlob();
+        const blob = await pdf(
+          <EnrollmentPDF enrollment={enrollment} />
+        ).toBlob();
         const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
-        // Opcional: revocar la URL para liberar memoria
+        window.open(url, "_blank");
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       } catch (error) {
         console.error("Error al generar PDF en móvil:", error);
@@ -258,14 +356,12 @@ export default function RegisterList() {
           description: "No se pudo generar la vista previa del PDF.",
         });
       } finally {
-        setIsGeneratingPdf(null); // Detiene el loader
+        setIsGeneratingPdf(null);
       }
     } else {
-      // Comportamiento para escritorio: abrir el Dialog
       setEnrollmentToView(enrollment);
     }
   };
-
 
   const handleDelete = async (id: string) => {
     const result = await Swal.fire({
@@ -278,17 +374,16 @@ export default function RegisterList() {
       confirmButtonText: "Sí, eliminar",
       cancelButtonText: "Cancelar",
     });
-
     if (!result.isConfirmed) return;
-
     try {
       await deleteEnrollment(id);
       await loadAllData(currentPage, {
         date: searchDate,
         user: searchUser,
         career: searchCareer,
+        name: searchName,
+        documentFilter: searchDocumentFilter,
       });
-
       Swal.fire({
         title: "¡Eliminado!",
         text: "La matrícula ha sido eliminada correctamente",
@@ -305,19 +400,12 @@ export default function RegisterList() {
     }
   };
 
-  const handleSearch = () => {
-    setCurrentPage(1);
-    loadAllData(1, {
-      date: searchDate,
-      user: searchUser,
-      career: searchCareer,
-    });
-  };
-
   const clearFilters = () => {
     setSearchDate("");
     setSearchUser("");
     setSearchCareer("");
+    setSearchName("");
+    setSearchDocumentFilter("all");
     if (currentPage !== 1) {
       setCurrentPage(1);
     } else {
@@ -367,7 +455,6 @@ export default function RegisterList() {
 
   return (
     <div className="space-y-6">
-      {/* ... (código de filtros sin cambios) ... */}
       <Card>
         <CardHeader>
           <CardTitle>Filtros de Búsqueda</CardTitle>
@@ -380,6 +467,13 @@ export default function RegisterList() {
               value={searchDate}
               onChange={(e) => setSearchDate(e.target.value)}
             />
+            
+            <Input
+              placeholder="Buscar por nombre o apellido"
+              value={searchName}
+              onChange={(e) => setSearchName(e.target.value)}
+            />
+            
             <Select value={searchUser} onValueChange={setSearchUser}>
               <SelectTrigger>
                 <SelectValue placeholder="Filtrar por usuario" />
@@ -395,6 +489,7 @@ export default function RegisterList() {
                   ))}
               </SelectContent>
             </Select>
+            
             <Select value={searchCareer} onValueChange={setSearchCareer}>
               <SelectTrigger>
                 <SelectValue placeholder="Filtrar por carrera" />
@@ -405,7 +500,6 @@ export default function RegisterList() {
                 {shiftOrder.map((shift) => {
                   const careerList = groupedCareers[shift];
                   if (!careerList || careerList.length === 0) return null;
-
                   return (
                     <SelectGroup key={shift}>
                       <SelectLabel>
@@ -422,16 +516,26 @@ export default function RegisterList() {
                 })}
               </SelectContent>
             </Select>
+
+            <Select value={searchDocumentFilter} onValueChange={setSearchDocumentFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filtrar por documentos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los documentos</SelectItem>
+                <SelectItem value="without">Sin documentos</SelectItem>
+                <SelectItem value="with">Con documentos</SelectItem>
+                <SelectItem value="complete">Documentos completos</SelectItem>
+              </SelectContent>
+            </Select>
+
             <div className="flex gap-2">
-              <Button onClick={handleSearch} className="w-full">
-                <Search className="mr-2 h-4 w-4" /> Buscar
-              </Button>
               <Button
                 onClick={clearFilters}
                 variant="outline"
                 className="w-full"
               >
-                <X className="mr-2 h-4 w-4" /> Limpiar
+                <X className="mr-2 h-4 w-4" /> Limpiar filtros
               </Button>
             </div>
           </div>
@@ -459,6 +563,7 @@ export default function RegisterList() {
                     <TableHead>Turno</TableHead>
                     <TableHead>Fecha de Registro</TableHead>
                     <TableHead>Registrado por</TableHead>
+                    <TableHead className="w-48">Documentos</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
@@ -470,12 +575,17 @@ export default function RegisterList() {
                         {enrollment.nombres} {enrollment.apellidos}
                       </TableCell>
                       <TableCell>{enrollment.carreraTecnica}</TableCell>
-                      <TableCell>{enrollment.career?.shift || 'N/A'}</TableCell>
+                      <TableCell>
+                        {enrollment.career?.shift || "N/A"}
+                      </TableCell>
                       <TableCell>
                         {new Date(enrollment.createdAt).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
                         {enrollment.user?.name || "Público"}
+                      </TableCell>
+                      <TableCell>
+                        <DocumentStatus enrollment={enrollment} />
                       </TableCell>
                       <TableCell>
                         {pendingEnrollments.some(
@@ -500,9 +610,9 @@ export default function RegisterList() {
                         <EnrollmentActions
                           enrollment={enrollment}
                           onDelete={handleDelete}
-                          onView={handleView} // Usar el nuevo manejador
+                          onView={handleView}
                           currentUser={currentUser}
-                          isViewing={isGeneratingPdf === enrollment.id} // Pasar estado de carga
+                          isViewing={isGeneratingPdf === enrollment.id}
                         />
                       </TableCell>
                     </TableRow>
@@ -552,9 +662,9 @@ export default function RegisterList() {
                   <EnrollmentActions
                     enrollment={enrollment}
                     onDelete={handleDelete}
-                    onView={handleView} // Usar el nuevo manejador
+                    onView={handleView}
                     currentUser={currentUser}
-                    isViewing={isGeneratingPdf === enrollment.id} // Pasar estado de carga
+                    isViewing={isGeneratingPdf === enrollment.id}
                   />
                 </div>
               </CardHeader>
@@ -568,7 +678,7 @@ export default function RegisterList() {
                 <div className="flex justify-between text-left">
                   <span className="text-muted-foreground">Turno:</span>
                   <span className="text-right font-medium">
-                    {enrollment.career?.shift || 'N/A'}
+                    {enrollment.career?.shift || "N/A"}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -578,8 +688,14 @@ export default function RegisterList() {
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Registrado por:</span>
+                  <span className="text-muted-foreground">
+                    Registrado por:
+                  </span>
                   <span>{enrollment.user?.name || "Público"}</span>
+                </div>
+                <div className="flex justify-between items-center pt-2">
+                  <span className="text-muted-foreground">Docs:</span>
+                  <DocumentStatus enrollment={enrollment} />
                 </div>
                 <div className="flex justify-between items-center pt-2">
                   <span className="text-muted-foreground">Estado:</span>
@@ -622,7 +738,6 @@ export default function RegisterList() {
         </div>
       </div>
 
-      {/* El Dialog se mantiene igual, solo se mostrará en escritorio */}
       <Dialog
         open={!!enrollmentToView}
         onOpenChange={(open) => !open && setEnrollmentToView(null)}
@@ -643,7 +758,10 @@ export default function RegisterList() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEnrollmentToView(null)}>
+            <Button
+              variant="outline"
+              onClick={() => setEnrollmentToView(null)}
+            >
               Cerrar
             </Button>
             {isClient && enrollmentToView && (
