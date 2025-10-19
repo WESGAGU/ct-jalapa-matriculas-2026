@@ -15,11 +15,10 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, X } from "lucide-react";
+import { PlusCircle, X, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import StudentQuestions from "@/components/register/public/student-questions";
 import BlurText from "@/components/ui/BlurText";
-
 
 // --- Helper Hook y Componente para Animación de Scroll ---
 
@@ -34,12 +33,11 @@ function useOnScreen(ref: RefObject<HTMLElement>) {
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
-        // Actualiza el estado basado en si el elemento está visible o no.
         setIntersecting(entry.isIntersecting);
       },
       {
-        threshold: 0.1, // Se activa cuando el 10% del elemento es visible.
-        rootMargin: "0px 0px -50px 0px", // El margen inferior negativo "encoge" el viewport, retrasando el trigger.
+        threshold: 0.1,
+        rootMargin: "0px 0px -50px 0px",
       }
     );
     const currentRef = ref.current;
@@ -76,6 +74,48 @@ const AnimatedSection = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+// --- Componente de Tarjeta con Imagen (Sombra por defecto) ---
+const StrategyLinkCard = () => {
+  return (
+    <div className="my-12">
+      <Link href="/estrategia-nacional" passHref>
+        <div className="
+          group block rounded-3xl overflow-hidden transition-all duration-300
+          bg-white dark:bg-slate-900/60 dark:backdrop-blur-lg dark:border dark:border-white/10
+          shadow-xl hover:shadow-2xl hover:scale-[1.02] cursor-pointer
+          lg:flex lg:items-center
+        ">
+          {/* Contenedor de la Imagen */}
+          <div className="relative h-56 lg:h-64 lg:w-5/12">
+            <Image
+              src="/estrategia-nacional/centro-tecnologico-jalapa-clases-2024.jpg"
+              alt="Estudiantes en un entorno profesional"
+              layout="fill"
+              objectFit="cover"
+              className="transition-transform duration-500 group-hover:scale-105"
+            />
+          </div>
+
+          {/* Contenido de la tarjeta */}
+          <div className="p-6 lg:p-8 lg:w-7/12">
+            <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
+              Da el Siguiente Paso: De Técnico a Profesional
+            </h3>
+            <p className="text-gray-600 dark:text-slate-300 mb-4">
+              ¿Sabías que tu título técnico te abre las puertas de la universidad? <br /> Descubre las carreras técnicas que ofrecemos que tienen continuidad. Convalida tus estudios y avanza directamente al segundo o tercer año de una carrera universitaria.
+            </p>
+            <div className="flex items-center text-blue-600 dark:text-blue-400 font-semibold mt-6">
+              <span>Conocer más sobre la Continuidad Educativa</span>
+              <ArrowRight className="ml-2 w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" />
+            </div>
+          </div>
+        </div>
+      </Link>
+    </div>
+  );
+};
+
+
 export default function NewPublicRegisterPage() {
   const [isFormVisible, setIsFormVisible] = useState(false);
 
@@ -84,7 +124,7 @@ export default function NewPublicRegisterPage() {
   };
 
   return (
-    <div className="w-full pb-2">
+    <div className="max-w-6xl mx-auto pb-2">
       <div>
         {/* Header Section */}
         <div className="text-primary-foreground py-12 md:py-16">
@@ -162,11 +202,18 @@ export default function NewPublicRegisterPage() {
       )}
 
       <AnimatedSection>
+        <StrategyLinkCard />
+      </AnimatedSection>
+
+      <AnimatedSection>
         <StudentActivities />
       </AnimatedSection>
 
       <AnimatedSection>
-        <StudentQuestions />
+        <div className="mb-16">
+          <StudentQuestions />
+        </div>
+        
       </AnimatedSection>
 
       <AnimatedSection>

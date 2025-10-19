@@ -140,7 +140,7 @@ const faqData = [
             <span role="img" aria-label="emoji" className="mr-2">
               💻
             </span>
-            Los técnicos Generales en Computación, Administración y Contabilidad tienen una duración de 2 semestres la cual equivale a 1 año.  
+            Los técnicos Generales en Computación, Administración y Contabilidad tienen una duración de 2 semestres la cual equivale a 1 año.
           </li>
           <li className="flex items-center">
             <span role="img" aria-label="emoji" className="mr-2">
@@ -289,28 +289,33 @@ const faqData = [
 
 const StudentQuestions = () => {
   return (
-    <div className="container mx-auto py-12 md:py-16"> 
-      <div className="w-full bg-card border mx-auto max-w-6xl rounded-xl">
-        <div className="p-4 md:p-6"> 
-            <h2 className="text-lg md:text-2xl font-bold mb-4 text-center text-card-foreground">
-              Preguntas que te pueden interesar
-            </h2>
-            <Accordion type="single" collapsible className="w-full text-left md:text-center">
-              {faqData.map((item) => (
-                <AccordionItem key={item.id} value={item.id} className="text-left md:text-center text-sm md:text-lg">
-                  <AccordionTrigger 
-                    className="text-left justify-between [&[data-state=open]>svg]:rotate-180"
-                  >
-                    <div className="flex items-center text-left md:text-center">
-                      {item.question.props.children}
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="text-left">
-                    {item.answer}
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
+    <div className="container mx-auto py-12 md:py-16 shadow-lg rounded-xl">
+      {/* --- ÚNICO CAMBIO REALIZADO AQUÍ --- */}
+      <div className="
+        w-full mx-auto max-w-6xl rounded-3xl transition-all duration-300
+        bg-white
+        dark:bg-slate-900/60 dark:backdrop-blur-lg dark:border dark:border-white/10
+      ">
+        <div className="p-4 md:p-6">
+          <h2 className="text-lg md:text-2xl font-bold mb-4 text-center text-card-foreground">
+            Preguntas que te pueden interesar
+          </h2>
+          <Accordion type="single" collapsible className="w-full text-left md:text-center">
+            {faqData.map((item) => (
+              <AccordionItem key={item.id} value={item.id} className="text-left md:text-center text-sm md:text-lg border-white/10">
+                <AccordionTrigger
+                  className="text-left justify-between hover:no-underline [&[data-state=open]>svg]:rotate-180"
+                >
+                  <div className="flex items-center text-left md:text-center">
+                    {item.question.props.children}
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="text-left text-base text-slate-600 dark:text-slate-300">
+                  {item.answer}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
         </div>
       </div>
     </div>
