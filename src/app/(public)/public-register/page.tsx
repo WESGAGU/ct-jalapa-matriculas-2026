@@ -201,13 +201,15 @@ export default function NewPublicRegisterPage() {
         </div>
       )}
 
-      <AnimatedSection>
-        <StrategyLinkCard />
-      </AnimatedSection>
-
+     
       <AnimatedSection>
         <StudentActivities />
       </AnimatedSection>
+
+       <AnimatedSection>
+        <StrategyLinkCard />
+      </AnimatedSection>
+
 
       <AnimatedSection>
         <div className="mb-16">

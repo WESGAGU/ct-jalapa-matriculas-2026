@@ -25,7 +25,6 @@ const institutions = [
   {
     name: "CNU",
     description: "Consejo Nacional de Universidades",
-    // --- LÍNEA CORREGIDA ---
     logo: "/estrategia-nacional/cnu-logo.png",
   },
   {
@@ -637,6 +636,20 @@ export default function ContinuidadEducativa() {
             {careers.map((career, index) => (
               <CareerCard key={index} career={career} index={index} />
             ))}
+          </div>
+          <div className="mt-16 text-center">
+            <motion.div
+              className="inline-block"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Link
+                href="/public-register"
+                className="inline-block px-2 py-4 lg:px-8  text-sm lg:text-lg font-semibold text-white bg-blue-600 rounded-full shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Mira las Actividades de nuestros Estudiantes
+              </Link>
+            </motion.div>
           </div>
         </div>
       </section>
