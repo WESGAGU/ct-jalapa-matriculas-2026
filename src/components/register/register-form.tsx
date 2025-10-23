@@ -492,7 +492,7 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
         confirmButtonColor: '#3085d6',
         confirmButtonText: 'Entendido'
       }).then(() => {
-        router.push('/');
+        router.push('/register');
         router.refresh();
       });
 

@@ -70,7 +70,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-// --- HOOK PARA DETECTAR MÓVIL ---
+// --- HOOK PARA DETECTAR MÓVIL (SIN CAMBIOS) ---
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
 
@@ -92,7 +92,7 @@ function useIsMobile() {
   return isMobile;
 }
 
-// --- HOOK PARA DEBOUNCE ---
+// --- HOOK PARA DEBOUNCE (SIN CAMBIOS) ---
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
@@ -109,13 +109,13 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-// Define un tipo más completo para el usuario, incluyendo el rol
+// Define un tipo más completo para el usuario, incluyendo el rol (SIN CAMBIOS)
 type UserWithRole = User & {
   role?: string;
   id?: string;
 };
 
-// --- COMPONENTE MEJORADO PARA INDICADORES DE DOCUMENTOS ---
+// --- COMPONENTE MEJORADO PARA INDICADORES DE DOCUMENTOS (SIN CAMBIOS) ---
 const DocumentStatus = ({ enrollment }: { enrollment: Register }) => {
   const presentDocs = [];
   if (enrollment.cedulaFileFrente) presentDocs.push("Cédula (Frente)");
@@ -239,6 +239,7 @@ export default function RegisterList() {
   const [searchCareer, setSearchCareer] = useState("");
   const [searchName, setSearchName] = useState("");
   const [searchDocumentFilter, setSearchDocumentFilter] = useState("all");
+  // Se eliminó searchShift y sus referencias
   const [careers, setCareers] = useState<Career[]>([]);
   const [users, setUsers] = useState<{ id: string; name: string | null }[]>([]);
 
@@ -264,7 +265,11 @@ export default function RegisterList() {
       const apiFilters = {
         date: filters.date || undefined,
         user:
-          filters.user === "all" || !filters.user ? undefined : filters.user,
+          filters.user === "all" || !filters.user
+            ? undefined
+            : filters.user === "PUBLIC_USER" // Lógica para el filtro Público
+            ? "PUBLIC_USER"
+            : filters.user,
         career:
           filters.career === "all" || !filters.career
             ? undefined
@@ -461,6 +466,7 @@ export default function RegisterList() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            
             <Input
               type="date"
               placeholder="Fecha de registro"
@@ -480,6 +486,7 @@ export default function RegisterList() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los usuarios</SelectItem>
+                <SelectItem value="PUBLIC_USER">Público (Sin asignar)</SelectItem>
                 {users
                   .filter((user) => user.name)
                   .map((user) => (
@@ -558,36 +565,25 @@ export default function RegisterList() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Estudiante</TableHead>
-                    <TableHead>Carrera</TableHead>
-                    <TableHead>Turno</TableHead>
-                    <TableHead>Fecha de Registro</TableHead>
-                    <TableHead>Registrado por</TableHead>
-                    <TableHead className="w-48">Documentos</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
+                    {/* CORRECCIÓN HIDRATACIÓN: Contenido de TR en una línea */}
+                    <TableHead>Estudiante</TableHead><TableHead>Carrera</TableHead><TableHead>Turno</TableHead><TableHead>Fecha de Registro</TableHead><TableHead>Registrado por</TableHead><TableHead className="w-48">Documentos</TableHead><TableHead>Estado</TableHead><TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {allEnrollments.map((enrollment) => (
                     <TableRow key={enrollment.id}>
+                      {/* CORRECCIÓN HIDRATACIÓN: Contenido de TR en una línea */}
                       <TableCell className="font-medium">
                         {enrollment.nombres} {enrollment.apellidos}
-                      </TableCell>
-                      <TableCell>{enrollment.carreraTecnica}</TableCell>
-                      <TableCell>
+                      </TableCell><TableCell>{enrollment.carreraTecnica}</TableCell><TableCell>
                         {enrollment.career?.shift || "N/A"}
-                      </TableCell>
-                      <TableCell>
+                      </TableCell><TableCell>
                         {new Date(enrollment.createdAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
+                      </TableCell><TableCell>
                         {enrollment.user?.name || "Público"}
-                      </TableCell>
-                      <TableCell>
+                      </TableCell><TableCell>
                         <DocumentStatus enrollment={enrollment} />
-                      </TableCell>
-                      <TableCell>
+                      </TableCell><TableCell>
                         {pendingEnrollments.some(
                           (p) => p.id === enrollment.id
                         ) ? (
@@ -605,8 +601,7 @@ export default function RegisterList() {
                             Completado
                           </Badge>
                         )}
-                      </TableCell>
-                      <TableCell className="text-right">
+                      </TableCell><TableCell className="text-right">
                         <EnrollmentActions
                           enrollment={enrollment}
                           onDelete={handleDelete}

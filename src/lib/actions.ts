@@ -203,25 +203,37 @@ export async function getEnrollments(
     };
   }
 
+  // MODIFICACIÓN: Lógica para filtrar por usuario, incluyendo "PUBLIC_USER"
   if (filters.user) {
-    where.user = {
-      name: {
-        contains: filters.user,
-        mode: 'insensitive',
-      },
-    };
+    if (filters.user === "PUBLIC_USER") {
+      where.userId = null; // Filtra por registros sin usuario asignado (Público)
+    } else {
+      where.user = {
+        name: {
+          contains: filters.user,
+          mode: 'insensitive',
+        },
+      };
+    }
   }
+
+  // Consolida los filtros de Carrera.
+  const careerWhere: Prisma.CareerWhereInput = {};
 
   if (filters.career) {
-    where.career = {
-      name: {
-        contains: filters.career,
-        mode: 'insensitive',
-      },
+    // CORRECCIÓN CLAVE: Usar 'equals' en lugar de 'contains' para asegurar que el filtro
+    // de carrera solo traiga registros de la carrera seleccionada y su turno asociado.
+    careerWhere.name = {
+      equals: filters.career,
+      mode: 'insensitive',
     };
   }
 
-  // Nuevo filtro por nombre
+  if (Object.keys(careerWhere).length > 0) {
+    where.career = careerWhere;
+  }
+  
+  // Filtro por nombre (mantiene la posición original)
   if (filters.name) {
     where.OR = [
       {
@@ -239,7 +251,7 @@ export async function getEnrollments(
     ];
   }
 
-  // Nuevo filtro por documentos - CORREGIDO
+  // Filtro por documentos (sin cambios en la lógica interna)
   if (filters.documentFilter) {
     if (filters.documentFilter === 'without') {
       // Registros sin NINGÚN documento
