@@ -424,14 +424,15 @@ export default function ContinuidadEducativa() {
         <div className="absolute top-2 right-4">
           <ModeToggle />
         </div>
+
         <div className="max-w-6xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.6 }}
-            className="inline-block px-4 py-1.5 rounded-full text-blue-700 dark:text-blue-300 text-sm font-medium mb-6"
+            className="inline-block px-4 py-1.5 rounded-full text-blue-700 dark:text-blue-300 text-lg font-medium mb-6 lg:mb-10 lg:text-3xl"
           >
-            Estrategia Nacional de Articulación Educativa
+            Centro Tenólogico de Jalapa
           </motion.div>
           <motion.h1
             initial={{ opacity: 0, y: 20 }}

@@ -1,50 +1,66 @@
+// src/app/(admin)/register/edit/[id]/page.tsx
 "use client";
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import RegisterForm from '@/components/register/register-form';
-import { getEnrollmentById } from '@/lib/actions';
+// MODIFICADO: Importar getUsers
+import { getEnrollmentById, getUsers } from '@/lib/actions'; 
 import { Register } from '@/lib/types';
-import { useCurrentUser } from '@/hooks/use-current-user'; // 1. Importar el hook de usuario
+import { useCurrentUser } from '@/hooks/use-current-user'; 
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { List, Terminal } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { User, Role } from '@prisma/client'; // Importar tipos de Prisma para tipado correcto
+
+// Definir tipos auxiliares para claridad y compatibilidad
+type UserListItem = Pick<User, 'id' | 'name'>;
+// Definir el tipo esperado por RegisterForm para 'user' (asumiendo que solo necesita id, name y role)
+type UserFormProp = Pick<User, 'id' | 'name'> & { role?: Role };
+
 
 export default function EditEnrollmentPage() {
   const params = useParams();
-  const router = useRouter(); // 2. Importar el router para redirección
-  const { user: currentUser, isLoading: isUserLoading } = useCurrentUser(); // 3. Obtener el usuario actual
+  const router = useRouter(); 
+  const { user: currentUser, isLoading: isUserLoading } = useCurrentUser(); 
   
   const [enrollment, setEnrollment] = useState<Register | null>(null);
+  const [allUsers, setAllUsers] = useState<UserListItem[]>([]); // NUEVO ESTADO: Lista de usuarios
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isAuthorized, setIsAuthorized] = useState(false); // 4. Estado para controlar la autorización
+  const [isAuthorized, setIsAuthorized] = useState(false); 
 
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
   useEffect(() => {
     if (!id) return;
 
-    const fetchEnrollment = async () => {
+    // MODIFICADO: Cargar matrícula Y usuarios en paralelo
+    const fetchEnrollmentAndUsers = async () => {
       try {
         setIsLoading(true);
-        const data = await getEnrollmentById(id);
+        const [data, usersData] = await Promise.all([
+            getEnrollmentById(id),
+            getUsers(), // <-- Obtener todos los usuarios
+        ]);
+
         if (!data) {
           setError("No se encontró la matrícula especificada.");
         } else {
           setEnrollment(data as Register);
         }
+        setAllUsers(usersData); // <-- Guardar los usuarios
       } catch (err) {
-        setError("Error al cargar los datos de la matrícula.");
+        setError("Error al cargar los datos de la matrícula o usuarios.");
         console.error(err);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchEnrollment();
+    fetchEnrollmentAndUsers();
   }, [id]);
 
   // 5. EFECTO PARA LA VALIDACIÓN DE PERMISOS
@@ -59,11 +75,7 @@ export default function EditEnrollmentPage() {
 
     // Si el usuario NO es admin Y NO es el propietario, no está autorizado
     if (!isAdmin && !isOwner) {
-      // Opción 1: Redirigir a la lista de registros
       router.push('/register'); 
-
-      // Opción 2: O simplemente marcar como no autorizado para mostrar un mensaje
-      // setIsAuthorized(false);
     } else {
       // Si cumple las condiciones, autorizar el acceso
       setIsAuthorized(true);
@@ -100,16 +112,21 @@ export default function EditEnrollmentPage() {
     return (
       <div>
         <div className='flex items-center justify-between mb-4'>
-          <h1 className="text-2xl font-bold mb-4">Editar Matrícula</h1>
+          <h1 className="text-2xl font-bold mb-4">Editar Matrícula: {enrollment.nombres} {enrollment.apellidos}</h1>
           <Button asChild>
             <Link href="/register">
               <List className="mr-2 h-4 w-4" />
-              Volver
+              Volver a la Lista
             </Link>
           </Button>
         </div>
 
-        <RegisterForm enrollment={enrollment} />
+        {/* CORRECCIÓN: Se realiza un cast explícito para evitar el error de tipo. */}
+        <RegisterForm 
+            enrollment={enrollment} 
+            allUsers={allUsers}
+            user={currentUser as UserFormProp} // <-- FIX APLICADO
+        />
       </div>
     );
   }

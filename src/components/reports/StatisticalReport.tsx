@@ -5,67 +5,86 @@ import { getEnrollmentStats } from '@/lib/actions';
 // Registrar fuentes
 Font.register({
   family: 'Oswald',
-  src: 'https://fonts.gstatic.com/s/oswald/v13/Y_TKV6o8WovbUd3m_X9aAA.ttf'
+  src: 'https://fonts.gstatic.com/s/oswald/v13/Y_TKV6o8WovbUd3m_X9aAA.ttf',
 });
 
+// Estilos Optimizados y Corregidos
 const styles = StyleSheet.create({
   page: {
-    padding: 30,
+    paddingTop: 30,
+    paddingBottom: 40,
+    paddingHorizontal: 40,
     fontFamily: 'Helvetica',
     fontSize: 9,
-    color: '#333'
+    color: '#333333',
   },
   header: {
-    marginBottom: 20,
-    textAlign: 'center',
-    borderBottom: '2px solid #e0e0e0',
-    paddingBottom: 10,
-  },
-  logoContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    width: '100%',
-    marginBottom: 10,
+    marginBottom: 20,
+    borderBottomWidth: 1.5,
+    borderBottomColor: '#e0e0e0',
+    paddingBottom: 10,
+  },
+  headerInfo: {
+    textAlign: 'right',
   },
   logo: {
-    width: 90,
+    width: 80,
     height: 'auto',
   },
   title: {
-    fontSize: 20,
+    fontSize: 18,
     fontFamily: 'Oswald',
-    color: '#2c3e50',
-    marginBottom: 2,
+    color: '#1a237e',
+    marginBottom: 4,
+    textTransform: 'uppercase',
   },
   subtitle: {
     fontSize: 10,
-    color: '#7f8c8d',
+    color: '#555',
   },
   section: {
     marginBottom: 15,
-    padding: 10,
-    borderRadius: 5,
-    backgroundColor: '#f8f9fa',
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#34495e',
+    fontSize: 12,
+    fontFamily: 'Helvetica-Bold',
+    marginBottom: 8,
+    color: '#3f51b5',
     borderBottomWidth: 1,
-    borderBottomColor: '#34495e',
-    paddingBottom: 5,
+    borderBottomColor: '#9fa8da',
+    paddingBottom: 3,
     textTransform: 'uppercase',
   },
   gridContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     justifyContent: 'space-between',
+    gap: 15,
   },
   gridItem: {
     width: '48%',
-    marginBottom: 10,
+  },
+  summaryGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: '#f5f5f5',
+    padding: 10,
+    borderRadius: 5,
+    marginBottom: 15,
+  },
+  summaryBox: {
+    alignItems: 'center',
+  },
+  summaryLabel: {
+    fontSize: 9,
+    color: '#555',
+  },
+  summaryValue: {
+    fontSize: 14,
+    fontFamily: 'Helvetica-Bold',
+    color: '#1a237e',
   },
   listItem: {
     flexDirection: 'row',
@@ -81,117 +100,114 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   table: {
-    display: "flex",
-    width: "auto",
-    borderStyle: "solid",
+    width: 'auto',
+    borderStyle: 'solid',
     borderWidth: 1,
+    borderColor: '#e0e0e0',
     borderRightWidth: 0,
     borderBottomWidth: 0,
-    borderColor: '#bfbfbf',
     marginBottom: 10,
   },
   tableRow: {
-    flexDirection: "row",
-    backgroundColor: '#ffffff'
+    flexDirection: 'row',
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
   tableColHeader: {
-    borderStyle: "solid",
+    backgroundColor: '#f2f2f2',
+    padding: 5,
+    borderStyle: 'solid',
     borderWidth: 1,
+    borderColor: '#e0e0e0',
     borderLeftWidth: 0,
     borderTopWidth: 0,
-    borderColor: '#bfbfbf',
-    backgroundColor: '#e0e0e0',
-    padding: 5,
   },
   tableCol: {
-    borderStyle: "solid",
+    padding: 5,
+    borderStyle: 'solid',
     borderWidth: 1,
+    borderColor: '#e0e0e0',
     borderLeftWidth: 0,
     borderTopWidth: 0,
-    borderColor: '#bfbfbf',
-    padding: 5,
   },
   tableCellHeader: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    fontFamily: 'Helvetica-Bold'
+    fontSize: 9,
+    fontFamily: 'Helvetica-Bold',
   },
   tableCell: {
-    fontSize: 9
+    fontSize: 8,
+  },
+  communityItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  communityText: {
+    fontSize: 8,
   },
   footer: {
     position: 'absolute',
-    bottom: 30,
-    left: 30,
-    right: 30,
+    bottom: 20,
+    left: 40,
+    right: 40,
     textAlign: 'center',
-    color: 'grey',
+    color: '#999',
     fontSize: 8,
   },
 });
+
 
 interface StatisticalReportPDFProps {
   stats: Awaited<ReturnType<typeof getEnrollmentStats>>;
 }
 
 export const StatisticalReportPDF: React.FC<StatisticalReportPDFProps> = ({ stats }) => {
-
   const hasMonthlyData = stats.monthlyEnrollments.some(month => month.total > 0);
+  const date = new Date();
 
   return (
-    <Document>
+    <Document author="Centro Tecnológico de Jalapa" title={`Reporte Estadístico - ${date.toLocaleDateString()}`}>
       <Page size="A4" style={styles.page}>
-        {/* Encabezado */}
         <View style={styles.header} fixed>
-          <View style={styles.logoContainer}>
-            {/* eslint-disable-next-line jsx-a11y/alt-text */}
-            <Image style={styles.logo} src="/pdf-logo-izquierda.jpg" />
-            {/* eslint-disable-next-line jsx-a11y/alt-text */}
-            <Image style={styles.logo} src="/pdf-logo-derecha.jpg" />
-          </View>
-          <View>
+           {/* eslint-disable-next-line jsx-a11y/alt-text */}
+          <Image style={styles.logo} src="/logo-inatec-2016.png" />
+          <View style={styles.headerInfo}>
             <Text style={styles.title}>Reporte Estadístico de Matrículas</Text>
-            <Text style={styles.subtitle}>Generado el: {new Date().toLocaleDateString('es-NI')}</Text>
+            <Text style={styles.subtitle}>Generado el: {date.toLocaleDateString('es-NI')}</Text>
           </View>
         </View>
 
-        {/* Resumen General */}
-        <View style={styles.section} wrap={false}>
-          <Text style={styles.sectionTitle}>Resumen General</Text>
-          <View style={styles.gridContainer}>
-            <View style={styles.gridItem}>
-              <Text style={styles.itemName}>Total de Matrículas:</Text>
-              <Text style={styles.itemValue}>{stats.totalEnrollments}</Text>
-            </View>
-            <View style={styles.gridItem}>
-              <Text style={styles.itemName}>Matrículas de este Mes:</Text>
-              <Text style={styles.itemValue}>{stats.monthlyTotal}</Text>
-            </View>
+        <View style={styles.summaryGrid} wrap={false}>
+          <View style={styles.summaryBox}>
+            <Text style={styles.summaryLabel}>Total de Matrículas</Text>
+            <Text style={styles.summaryValue}>{stats.totalEnrollments}</Text>
+          </View>
+          <View style={styles.summaryBox}>
+            <Text style={styles.summaryLabel}>Matrículas de este Mes</Text>
+            <Text style={styles.summaryValue}>{stats.monthlyTotal}</Text>
           </View>
         </View>
 
-        {/* Historial de Matrículas */}
         {hasMonthlyData && (
           <View style={styles.section} wrap={false}>
-            <Text style={styles.sectionTitle}>Historial de Matrículas (Meses con Actividad)</Text>
+            <Text style={styles.sectionTitle}>Historial de Matrículas Mensuales</Text>
             <View style={styles.table}>
               <View style={styles.tableRow} fixed>
                 <View style={[styles.tableColHeader, { width: '50%' }]}><Text style={styles.tableCellHeader}>Mes</Text></View>
-                <View style={[styles.tableColHeader, { width: '50%' }]}><Text style={styles.tableCellHeader}>Total de Matrículas</Text></View>
+                <View style={[styles.tableColHeader, { width: '50%', textAlign: 'center' }]}><Text style={styles.tableCellHeader}>Total de Matrículas</Text></View>
               </View>
               {stats.monthlyEnrollments
                 .filter(monthData => monthData.total > 0)
                 .map((monthData, index) => (
-                  <View key={index} style={styles.tableRow}>
+                  <View key={index} style={styles.tableRow} wrap={false}>
                     <View style={[styles.tableCol, { width: '50%' }]}><Text style={styles.tableCell}>{monthData.name}</Text></View>
-                    <View style={[styles.tableCol, { width: '50%' }]}><Text style={styles.tableCell}>{monthData.total}</Text></View>
+                    <View style={[styles.tableCol, { width: '50%', textAlign: 'center' }]}><Text style={styles.tableCell}>{monthData.total}</Text></View>
                   </View>
               ))}
             </View>
           </View>
         )}
 
-        {/* Matrículas por Carrera como tabla */}
         <View style={styles.section} wrap={false}>
           <Text style={styles.sectionTitle}>Matrículas por Carrera</Text>
           <View style={styles.table}>
@@ -201,7 +217,7 @@ export const StatisticalReportPDF: React.FC<StatisticalReportPDFProps> = ({ stat
               <View style={[styles.tableColHeader, { width: '15%', textAlign: 'center' }]}><Text style={styles.tableCellHeader}>Total</Text></View>
             </View>
             {stats.enrollmentsByCareer.map((career, index) => (
-              <View key={index} style={styles.tableRow}>
+              <View key={index} style={styles.tableRow} wrap={false}>
                 <View style={[styles.tableCol, { width: '60%' }]}><Text style={styles.tableCell}>{career.name}</Text></View>
                 <View style={[styles.tableCol, { width: '25%' }]}><Text style={styles.tableCell}>{career.shift}</Text></View>
                 <View style={[styles.tableCol, { width: '15%', textAlign: 'center' }]}><Text style={styles.tableCell}>{career.total}</Text></View>
@@ -210,9 +226,8 @@ export const StatisticalReportPDF: React.FC<StatisticalReportPDFProps> = ({ stat
           </View>
         </View>
 
-        {/* Contenedor para Edades y Nivel Académico */}
         <View style={styles.gridContainer}>
-          <View style={[styles.section, {width: '48%'}]} wrap={false}>
+          <View style={[styles.section, styles.gridItem]} wrap={false}>
             <Text style={styles.sectionTitle}>Distribución por Edades</Text>
             {stats.enrollmentsByAge.map((ageData) => (
               <View key={ageData.age} style={styles.listItem}>
@@ -222,7 +237,7 @@ export const StatisticalReportPDF: React.FC<StatisticalReportPDFProps> = ({ stat
             ))}
           </View>
 
-          <View style={[styles.section, {width: '48%'}]} wrap={false}>
+          <View style={[styles.section, styles.gridItem]} wrap={false}>
             <Text style={styles.sectionTitle}>Por Nivel Académico</Text>
             {stats.enrollmentsByAcademicLevel.map((level) => (
               <View key={level.name} style={styles.listItem}>
@@ -233,32 +248,33 @@ export const StatisticalReportPDF: React.FC<StatisticalReportPDFProps> = ({ stat
           </View>
         </View>
         
-        {/* Tabla de Procedencia de Estudiantes */}
         <View style={styles.section} wrap={false}>
           <Text style={styles.sectionTitle}>Procedencia de Estudiantes</Text>
           <View style={styles.table}>
-            {/* Encabezados de la tabla */}
             <View style={styles.tableRow} fixed>
               <View style={[styles.tableColHeader, { width: '40%' }]}><Text style={styles.tableCellHeader}>Municipio</Text></View>
               <View style={[styles.tableColHeader, { width: '45%' }]}><Text style={styles.tableCellHeader}>Comunidad</Text></View>
               <View style={[styles.tableColHeader, { width: '15%', textAlign: 'center' }]}><Text style={styles.tableCellHeader}>Total</Text></View>
             </View>
-            {/* Contenido de la tabla */}
-            {stats.enrollmentsByLocation.flatMap((location) =>
-              location.comunidades.map((community, index) => (
-                <View key={`${location.municipio}-${community.name}-${index}`} style={styles.tableRow}>
-                  <View style={[styles.tableCol, { width: '40%' }]}><Text style={styles.tableCell}>{location.municipio}</Text></View>
-                  <View style={[styles.tableCol, { width: '45%' }]}><Text style={styles.tableCell}>{community.name}</Text></View>
-                  <View style={[styles.tableCol, { width: '15%', textAlign: 'center' }]}><Text style={styles.tableCell}>{community.total}</Text></View>
+            {stats.enrollmentsByLocation.map((location) => (
+              <View key={location.municipio} style={styles.tableRow} wrap={false}>
+                <View style={[styles.tableCol, { width: '40%' }]}>
+                  <Text style={styles.tableCell}>{location.municipio}</Text>
                 </View>
-              ))
-            )}
+                <View style={[styles.tableCol, { width: '60%', flexDirection: 'column', padding: 0 }]}>
+                  {location.comunidades.map((community, index) => (
+                    <View key={index} style={[styles.communityItem, { borderBottomWidth: index === location.comunidades.length - 1 ? 0 : 0.5, borderBottomColor: '#eee', padding: 5}]}>
+                      <Text style={[styles.communityText, { width: '80%' }]}>{community.name}</Text>
+                      <Text style={[styles.communityText, { width: '20%', textAlign: 'center' }]}>{community.total}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ))}
           </View>
         </View>
 
-        <Text style={styles.footer} fixed>
-          Centro Tecnológico de Jalapa - Sistema de Matrículas
-        </Text>
+        <Text style={styles.footer} fixed render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages} - Centro Tecnológico de Jalapa`} />
       </Page>
     </Document>
   );

@@ -1,3 +1,4 @@
+// src/components/register/register-form.tsx
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -37,7 +38,7 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
-import type { Register, User } from "@/lib/types"; // Importar User
+import type { Register, User } from "@/lib/types";
 import {
   addEnrollment,
   updateEnrollment as updateEnrollmentAction,
@@ -53,7 +54,7 @@ import type SignatureCanvas from "react-signature-canvas";
 import { ImageDropzone } from "../ui/image-dropzone";
 import Swal from 'sweetalert2';
 import dynamic from "next/dynamic";
-import { Career, Register as PrismaRegister } from "@prisma/client";
+import { Career, Register as PrismaRegister, Role } from "@prisma/client";
 import { FaRegAddressCard, FaRegCreditCard, FaFileAlt } from "react-icons/fa";
 import { FcDiploma1 } from "react-icons/fc";
 
@@ -98,6 +99,12 @@ const isAtLeast14YearsOld = (birthDate: Date): boolean => {
   return isBefore(birthDate, minDate);
 };
 
+// Extender el tipo User para asegurar que tenga rol e id
+type UserWithRole = Pick<User, 'id' | 'name'> & { role?: Role };
+type UserListItem = { id: string; name: string | null };
+
+
+// Zod Schema para el formulario de matrícula
 const formSchema = z
   .object({
     // Section I
@@ -158,6 +165,10 @@ const formSchema = z
 
     // Signature
     firmaProtagonista: z.string().optional(),
+
+    // NUEVOS CAMPOS EDITABLES POR ADMIN
+    createdAt: z.date().optional(), // Fecha de registro (solo visible para admin)
+    userId: z.string().optional().nullable(), // Usuario asignado (solo visible para admin)
   })
   .superRefine((data, ctx) => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -182,65 +193,17 @@ const formSchema = z
         });
       }
     }
-
-    /*
-    if (!isEditMode) {
-      if (hasCedula) {
-        if (!data.cedulaFileFrente) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ["cedulaFileFrente"],
-            message: "La imagen frontal de la cédula es obligatoria.",
-          });
-        }
-        if (!data.cedulaFileReverso) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ["cedulaFileReverso"],
-            message: "La imagen trasera de la cédula es obligatoria.",
-          });
-        }
-      } else {
-        if (!data.birthCertificateFile) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ["birthCertificateFile"],
-            message: "La partida de nacimiento es obligatoria cuando no hay cédula.",
-          });
-        }
-      }
-
-      
-      if (finished) {
-        if (!data.diplomaFile) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ["diplomaFile"],
-            message: "El diploma es obligatorio si culminó bachillerato.",
-          });
-        }
-      } else {
-        if (!data.gradesCertificateFile) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ["gradesCertificateFile"],
-            message: "El certificado de notas es obligatorio si no culminó bachillerato.",
-          });
-        }
-      }
-      
-    }
-    */
   });
 
 type RegisterFormValues = z.infer<typeof formSchema>;
 
 interface RegisterFormProps {
   enrollment?: Register | PrismaRegister;
-  user?: User;
+  user?: UserWithRole;
+  allUsers?: UserListItem[]; // <-- NUEVO: Recibir lista de usuarios
 }
 
-export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
+export default function RegisterForm({ enrollment, user, allUsers = [] }: RegisterFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -249,6 +212,8 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
   const [careers, setCareers] = useState<Career[]>([]);
   const [isUnderage, setIsUnderage] = useState(false);
   const [hasBirthDate, setHasBirthDate] = useState(false);
+
+  const isAdmin = user?.role === 'ADMIN'; // NUEVO: Determinar si es Admin
 
   useEffect(() => {
     async function fetchCareers() {
@@ -260,7 +225,7 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
 
   const sigCanvas = useRef<SignatureCanvas>(null);
   const isEditMode = !!enrollment;
-  const signatureColor = "black"; // <-- ❗ CAMBIO 1: Color de la firma siempre negro
+  const signatureColor = "black";
 
   const emptyDefaults: Partial<RegisterFormValues> = useMemo(() => ({
     nombres: "",
@@ -291,6 +256,9 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
     diplomaFile: undefined,
     gradesCertificateFile: undefined,
     firmaProtagonista: undefined,
+    // Inicializar campos de Admin
+    createdAt: undefined, 
+    userId: null,
   }), []);
 
   const computedDefaults = useMemo<Partial<RegisterFormValues>>(() => {
@@ -300,6 +268,12 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
       enrollment.birthDate && typeof enrollment.birthDate === "string"
         ? new Date(enrollment.birthDate)
         : (enrollment.birthDate as Date);
+
+    // NUEVO: Obtener la fecha de creación para el formulario
+    const createdAtDate = enrollment.createdAt
+      ? new Date(enrollment.createdAt)
+      : new Date();
+
 
     if (date) {
       setIsUnderage(!isAtLeast14YearsOld(date));
@@ -336,6 +310,9 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
       hasCedula:
         enrollment.cedulaFileFrente || enrollment.cedula ? "si" : "no",
       finishedBachillerato: enrollment.diplomaFile ? "si" : "no",
+      // NUEVO: Inicializar campos de Admin
+      createdAt: createdAtDate,
+      userId: (enrollment as PrismaRegister).userId ?? null,
     };
   }, [enrollment, emptyDefaults]);
 
@@ -432,7 +409,8 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
     setIsSubmitting(true);
     form.clearErrors(["cedula", "email", "carreraTecnica"]);
 
-    const { hasCedula, finishedBachillerato, ...rest } = data;
+    // MODIFICADO: Desestructurar nuevos campos
+    const { hasCedula, finishedBachillerato, createdAt, userId, ...rest } = data; 
 
     const [cedulaFrente, cedulaReverso, diploma, birthCertificate, gradesCertificate] = await Promise.all([
       rest.cedulaFileFrente instanceof File ? fileToDataUri(rest.cedulaFileFrente) : (enrollment as Register)?.cedulaFileFrente,
@@ -449,7 +427,8 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
       cedula: typeof rest.cedula === "string" ? (rest.cedula.trim() || undefined) : undefined,
       email: typeof rest.email === "string" ? (rest.email.trim() || undefined) : undefined,
       numPersonasHogar: Number(rest.numPersonasHogar),
-      createdAt: isEditMode && enrollment ? new Date(enrollment.createdAt) : new Date(),
+      // MODIFICADO: Usar el valor del formulario para createdAt si es edición/admin
+      createdAt: isEditMode && isAdmin && createdAt ? new Date(createdAt) : (enrollment?.createdAt ? new Date(enrollment.createdAt) : new Date()),
       updatedAt: new Date(),
       cedulaFileFrente: hasCedula === "si" ? cedulaFrente : undefined,
       cedulaFileReverso: hasCedula === "si" ? cedulaReverso : undefined,
@@ -457,7 +436,8 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
       diplomaFile: finishedBachillerato === "si" ? diploma : undefined,
       gradesCertificateFile: finishedBachillerato === "no" ? gradesCertificate : undefined,
       firmaProtagonista: sigCanvas.current?.isEmpty() ? (enrollment as Register)?.firmaProtagonista : sigCanvas.current?.toDataURL("image/png"),
-      userId: enrollment ? (enrollment as PrismaRegister).userId : user?.id || null,
+      // MODIFICADO: Usar el valor del formulario para userId si es edición/admin
+      userId: isEditMode && isAdmin ? (userId || null) : user?.id || null, 
       user: enrollment ? (enrollment as Register).user : { name: user?.name || null },
     };
 
@@ -473,7 +453,17 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
     try {
       if (isOnline) {
         if (isEditMode && enrollment) {
-          await updateEnrollmentAction(enrollmentData.id, enrollmentData);
+          // Crear un objeto con solo los campos permitidos para la actualización
+          const updateFields: Partial<Register> = {
+            ...enrollmentData,
+            // Sobreescribir con los valores de admin si es admin
+            ...(isAdmin && {
+                createdAt: enrollmentData.createdAt,
+                userId: enrollmentData.userId, 
+            })
+          };
+          
+          await updateEnrollmentAction(enrollmentData.id, updateFields);
         } else {
           await addEnrollment(enrollmentData, user?.id);
         }
@@ -492,6 +482,7 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
         confirmButtonColor: '#3085d6',
         confirmButtonText: 'Entendido'
       }).then(() => {
+        // Redirigir a la lista de registros
         router.push('/register');
         router.refresh();
       });
@@ -540,7 +531,8 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
         <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-4">
           <Accordion
             type="multiple"
-            defaultValue={["item-1", "item-2", "item-3", "item-4"]}
+            // Abre por defecto los paneles relevantes en modo edición/admin
+            defaultValue={["item-1", "item-2", "item-3", "item-4", isEditMode && isAdmin ? "admin-tools" : ""].filter(Boolean) as string[]} 
             className="w-full"
           >
             <AccordionItem value="item-1">
@@ -1112,7 +1104,7 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
                     <SignaturePad   // @ts-expect-error: 'ref' is not a valid prop for this component.
                       ref={sigCanvas}
                       penColor={signatureColor}
-                      canvasProps={{ className: "w-full h-full rounded-md bg-white dark:bg-gray-900" }} // <-- ❗ CAMBIO 2: Fondo siempre blanco
+                      canvasProps={{ className: "w-full h-full rounded-md bg-white dark:bg-gray-900" }} 
                     />
                     <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 dark:text-white" onClick={clearSignature}>
                       <RefreshCw className="h-4 w-4" />
@@ -1122,6 +1114,82 @@ export default function RegisterForm({ enrollment, user }: RegisterFormProps) {
                 </FormItem>
               </AccordionContent>
             </AccordionItem>
+
+            {/* NUEVO: ACORDEÓN DE HERRAMIENTAS DE ADMINISTRADOR (Solo en edición y si es Admin) */}
+            {isEditMode && isAdmin && (
+                <AccordionItem value="admin-tools">
+                    <AccordionTrigger className="font-bold text-lg text-amber-600 dark:text-amber-400">V. Herramientas de Administración</AccordionTrigger>
+                    <AccordionContent className="space-y-6 pt-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* CAMPO PARA EDITAR FECHA DE REGISTRO */}
+                            <FormField
+                                control={form.control}
+                                name="createdAt"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-col">
+                                        <FormLabel>Fecha de Registro</FormLabel>
+                                        <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                                            <PopoverTrigger asChild>
+                                                <FormControl>
+                                                    <Button
+                                                        variant={"outline"}
+                                                        className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
+                                                    >
+                                                        {field.value ? format(field.value, "PPP", { locale: es }) : <span>Seleccione una fecha</span>}
+                                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                    </Button>
+                                                </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                                <Calendar 
+                                                    date={field.value} 
+                                                    setDate={(date) => field.onChange(date)} 
+                                                    setIsOpen={setIsCalendarOpen} 
+                                                />
+                                            </PopoverContent>
+                                        </Popover>
+                                        <FormDescription>
+                                            Fecha en que se creó el registro (editable por Admin).
+                                        </FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            {/* CAMPO PARA ASIGNAR USUARIO */}
+                            <FormField
+                                control={form.control}
+                                name="userId"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Registrado por (Usuario)</FormLabel>
+                                        <Select onValueChange={(value) => field.onChange(value === "public" ? null : value)} value={field.value ?? "public"}>
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Seleccione un usuario" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="public">Público (Sin Asignar)</SelectItem>
+                                                {allUsers.map((u) => (
+                                                    <SelectItem key={u.id} value={u.id}>
+                                                        {u.name || `Usuario sin nombre (${u.id})`}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormDescription>
+                                            Asignar este registro a un usuario del sistema.
+                                        </FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            )}
+            {/* FIN NUEVO: ACORDEÓN DE HERRAMIENTAS DE ADMINISTRADOR */}
           </Accordion>
 
           <p className="text-sm text-muted-foreground">La fecha de registro se guardará automáticamente.</p>

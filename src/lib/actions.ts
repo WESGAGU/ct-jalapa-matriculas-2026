@@ -152,7 +152,7 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
 
 
     revalidatePath('/');
-    revalidatePath(`/${newEnrollment.id}`);
+    revalidatePath(`/register/edit/${newEnrollment.id}`); // Ruta actualizada
     revalidatePath('/register');
     return newEnrollment;
 
@@ -340,8 +340,9 @@ export async function updateEnrollment(id: string, data: Partial<Omit<Register, 
     throw new Error("Matrícula no encontrada.");
   }
 
+  // MODIFICADO: Incluir createdAt y userId en la desestructuración de data
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { birthDate, user: _user, userId: _userId, career: _career, ...rest } = data;
+  const { birthDate, createdAt, userId, user: _user, career: _career, ...rest } = data;
   
   const { carreraTecnica, ...otherData } = rest;
   
@@ -350,6 +351,18 @@ export async function updateEnrollment(id: string, data: Partial<Omit<Register, 
   if (birthDate) {
     updateData.birthDate = new Date(birthDate);
   }
+  
+  // NUEVO: Manejar la actualización de la fecha de registro (solo si se provee)
+  if (createdAt) {
+    updateData.createdAt = new Date(createdAt);
+  }
+  
+  // NUEVO: Manejar la asignación de usuario (incluyendo la desasignación con null)
+  if (userId !== undefined) {
+    // Si userId es null, desconecta la relación (Público)
+    updateData.user = userId === null ? { disconnect: true } : { connect: { id: userId } };
+  }
+
 
   if (carreraTecnica) {
     updateData.career = {
@@ -407,7 +420,7 @@ export async function updateEnrollment(id: string, data: Partial<Omit<Register, 
     }
 
     revalidatePath('/');
-    revalidatePath(`/${id}`);
+    revalidatePath(`/register/edit/${id}`); // Se usó esta ruta en el ejemplo anterior
     revalidatePath('/register');
     return updatedEnrollment;
 
@@ -662,5 +675,51 @@ export async function getEnrollmentsByCareer(careerName: string): Promise<Regist
   } catch (error) {
     console.error(`Error fetching enrollments for career ${careerName}:`, error);
     throw new Error("No se pudieron obtener las matrículas para esa carrera.");
+  }
+}
+
+// ▼▼▼ NUEVA FUNCIÓN PARA EL REPORTE ▼▼▼
+export async function getEnrollmentsWithNoDocuments() {
+  try {
+    const enrollments = await prisma.register.findMany({
+      where: {
+        AND: [
+          { cedulaFileFrente: null },
+          { cedulaFileReverso: null },
+          { birthCertificateFile: null },
+          { diplomaFile: null },
+          { gradesCertificateFile: null },
+        ],
+      },
+      orderBy: [
+        { carreraTecnica: 'asc' },
+        { apellidos: 'asc' },
+      ],
+      include: {
+        career: true,
+      },
+    });
+
+    // Agrupar por carrera para el reporte
+    const groupedByCareer = enrollments.reduce((acc, enrollment) => {
+      const careerName = enrollment.carreraTecnica;
+      if (!acc[careerName]) {
+        acc[careerName] = {
+          careerName: careerName,
+          shift: enrollment.career?.shift || 'Desconocido',
+          students: [],
+        };
+      }
+      acc[careerName].students.push(enrollment);
+      return acc;
+    }, {} as Record<string, { careerName: string; shift: string; students: Register[] }>);
+    
+    // Convertir el objeto de carreras en un array
+    // @typescript-eslint/ban-ts-comment
+    return Object.values(groupedByCareer);
+
+  } catch (error) {
+    console.error("Error fetching enrollments with no documents:", error);
+    throw new Error("No se pudieron obtener los registros de estudiantes sin documentos.");
   }
 }

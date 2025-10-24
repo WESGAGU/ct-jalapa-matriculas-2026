@@ -197,7 +197,7 @@ const EnrollmentActions = ({
           <>
             <DropdownMenuItem asChild>
               <Link
-                href={`/${enrollment.id}`}
+                href={`register/edit/${enrollment.id}`}
                 className="flex items-center w-full"
               >
                 <Edit className="mr-2 h-4 w-4" /> Editar

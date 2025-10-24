@@ -29,7 +29,7 @@ export const menuItems = [
     icon: LayoutDashboard,
   },
   {
-    href: '/new',
+    href: '/register/new',
     label: 'Ingresar Matrícula',
     icon: FilePlus2,
   },

@@ -9,7 +9,7 @@ export default function RegisterPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Matrículas</h1>
         <Button asChild>
-          <Link href="/new">
+          <Link href="/register/new">
             <PlusCircle className="mr-2 h-4 w-4" />
             Nueva Matrícula
           </Link>
