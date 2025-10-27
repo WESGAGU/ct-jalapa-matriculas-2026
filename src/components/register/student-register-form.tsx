@@ -224,14 +224,14 @@ function getErrorMessage(error: unknown): { userMessage: string; field?: keyof R
   const message = error.message.toLowerCase();
 
   // Errores de duplicados
-  if (message.includes('cédula') || message.includes('cedula')) {
+  if (message.includes('cédula') || message.includes('cedula') || message.includes('ya está registrada')) {
     return { 
       userMessage: "La cédula ingresada ya está registrada en el sistema. Verifique el número o contacte al administrador.",
       field: "cedula"
     };
   }
   
-  if (message.includes('correo') || message.includes('email')) {
+  if (message.includes('correo') || message.includes('email') || message.includes('ya está registrado')) {
     return { 
       userMessage: "El correo electrónico ya está registrado en el sistema. Utilice otro correo o contacte al administrador.",
       field: "email"
@@ -239,28 +239,28 @@ function getErrorMessage(error: unknown): { userMessage: string; field?: keyof R
   }
 
   // Errores de Cloudinary (subida de archivos)
-  if (message.includes('cloudinary') || message.includes('upload') || message.includes('imagen')) {
+  if (message.includes('cloudinary') || message.includes('upload') || message.includes('imagen') || message.includes('documentos')) {
     return { 
       userMessage: "Error al subir los documentos. Verifique que los archivos sean imágenes válidas y no muy pesadas."
     };
   }
 
   // Errores de conexión
-  if (message.includes('network') || message.includes('conexión') || message.includes('conexion') || message.includes('fetch')) {
+  if (message.includes('network') || message.includes('conexión') || message.includes('conexion') || message.includes('fetch') || message.includes('conexión')) {
     return { 
       userMessage: "Error de conexión. Verifique su conexión a internet e intente nuevamente."
     };
   }
 
   // Errores de validación
-  if (message.includes('validación') || message.includes('validacion') || message.includes('validation')) {
+  if (message.includes('validación') || message.includes('validacion') || message.includes('validation') || message.includes('inválidos')) {
     return { 
       userMessage: "Datos del formulario inválidos. Por favor, revise todos los campos obligatorios."
     };
   }
 
   // Errores de carrera
-  if (message.includes('carrera') || message.includes('career')) {
+  if (message.includes('carrera') || message.includes('career') || message.includes('referencia')) {
     return { 
       userMessage: "Error con la carrera seleccionada. Por favor, seleccione una carrera válida.",
       field: "carreraTecnica"
@@ -517,10 +517,16 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
 
     try {
       // Siempre enviar al servidor
+      let result;
       if (isEditMode && enrollment) {
-        await updateEnrollmentAction(enrollmentData.id, enrollmentData);
+        result = await updateEnrollmentAction(enrollmentData.id, enrollmentData);
       } else {
-        await addEnrollment(enrollmentData, user?.id);
+        result = await addEnrollment(enrollmentData, user?.id);
+      }
+
+      // VERIFICAR LA RESPUESTA DE LA ACCIÓN DEL SERVIDOR
+      if (!result.success) {
+        throw new Error(result.error || 'Error desconocido del servidor');
       }
 
       Swal.fire({
@@ -562,7 +568,7 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
         }
       });
 
-      // Establecer error en el campo específico si corresponde - CORREGIDO SIN ANY
+      // Establecer error en el campo específico si corresponde
       if (field) {
         form.setError(field, { 
           type: "manual", 

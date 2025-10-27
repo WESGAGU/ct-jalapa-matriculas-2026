@@ -11,7 +11,6 @@ import { Prisma } from '@prisma/client';
 import { sendConfirmationEmail } from '@/lib/sendEmailBrevo';
 import { sendNewEnrollmentNotificationEmail } from '@/lib/sendNotifyBrevo';
 
-
 console.log('use server');
 
 // --- Helper Functions for Cloudinary ---
@@ -35,7 +34,6 @@ function getPublicIdFromUrl(url: string | undefined | null): string | null {
 
 async function uploadImage(dataUri: string | undefined | null): Promise<{ url: string | null; publicId: string | null }> {
   if (!dataUri || !dataUri.startsWith('data:image')) {
-    // MODIFICADO: Devolver null para url y publicId si no hay data URI
     return { url: null, publicId: null };
   }
   try {
@@ -78,10 +76,18 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
 
     if (existingEnrollment) {
       if (existingEnrollment.cedula && rest.cedula && existingEnrollment.cedula === rest.cedula) {
-        throw new Error(`La cédula ${rest.cedula} ya está registrada.`);
+        return { 
+          success: false, 
+          error: `La cédula ${rest.cedula} ya está registrada.`,
+          data: null 
+        };
       }
       if (existingEnrollment.email && rest.email && existingEnrollment.email === rest.email) {
-        throw new Error(`El correo ${rest.email} ya está registrado.`);
+        return { 
+          success: false, 
+          error: `El correo ${rest.email} ya está registrado.`,
+          data: null 
+        };
       }
     }
   }
@@ -89,8 +95,7 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
   const uploadedImagePublicIds: string[] = [];
 
   try {
-    const uploadAndTrack = async (dataUri: string | undefined | null): Promise<string | null> => { // MODIFICADO: Tipo de retorno explícito
-      // MODIFICADO: Si no hay data URI, retorna null directamente.
+    const uploadAndTrack = async (dataUri: string | undefined | null): Promise<string | null> => {
       if (!dataUri || !dataUri.startsWith('data:image')) {
         return null;
       }
@@ -98,7 +103,7 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
       if (publicId) {
         uploadedImagePublicIds.push(publicId);
       }
-      return url; // `url` ya es `string | null` gracias a `uploadImage`
+      return url;
     };
     
     const cedulaFrenteUrl = await uploadAndTrack(rest.cedulaFileFrente);
@@ -114,7 +119,6 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
       ...dataWithoutCareer,
       id,
       birthDate: new Date(enrollment.birthDate),
-      // MODIFICADO: Asegurarse de que los valores sean `string | null`, no `undefined`
       cedulaFileFrente: cedulaFrenteUrl,
       cedulaFileReverso: cedulaReversoUrl,
       birthCertificateFile: birthCertificateUrl,
@@ -128,7 +132,7 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
     const newEnrollment = await prisma.register.create({
       data: createData,
       include: {
-        career: true, // Incluimos la carrera para tener el dato del turno
+        career: true,
       },
     });
 
@@ -150,11 +154,15 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
         }
     }
 
-
     revalidatePath('/');
-    revalidatePath(`/register/edit/${newEnrollment.id}`); // Ruta actualizada
+    revalidatePath(`/register/edit/${newEnrollment.id}`);
     revalidatePath('/register');
-    return newEnrollment;
+    
+    return { 
+      success: true, 
+      error: null, 
+      data: newEnrollment 
+    };
 
   } catch (error) {
     if (uploadedImagePublicIds.length > 0) {
@@ -162,40 +170,42 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
       await cloudinary.api.delete_resources(uploadedImagePublicIds).catch(console.error);
     }
 
+    let userMessage = 'No se pudo completar el registro. Verifique su conexión e intente nuevamente. Si el problema persiste, contacte al administrador.';
+
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2002') {
         const target = (error.meta?.target as string[]) || [];
         if (target.includes('cedula')) {
-          throw new Error('La cédula ingresada ya está registrada en el sistema.');
+          userMessage = 'La cédula ingresada ya está registrada en el sistema.';
         }
         if (target.includes('email')) {
-          throw new Error('El correo electrónico ingresado ya está registrado en el sistema.');
+          userMessage = 'El correo electrónico ingresado ya está registrado en el sistema.';
         }
       }
       
-      // Manejar otros errores conocidos de Prisma
       if (error.code === 'P2025') {
-        throw new Error('No se encontró el registro solicitado.');
+        userMessage = 'No se encontró el registro solicitado.';
       }
       if (error.code === 'P2003') {
-        throw new Error('Error de referencia: La carrera seleccionada no existe.');
+        userMessage = 'Error de referencia: La carrera seleccionada no existe.';
       }
     }
 
-    // Manejar errores de Cloudinary
     if (error instanceof Error && error.message.includes('Cloudinary')) {
-      throw new Error('Error al subir los documentos. Por favor, intente nuevamente.');
+      userMessage = 'Error al subir los documentos. Por favor, intente nuevamente.';
     }
 
-    // Validación de datos
     if (error instanceof Error && error.message.includes('validation')) {
-      throw new Error('Datos de formulario inválidos. Por favor, verifique la información.');
+      userMessage = 'Datos de formulario inválidos. Por favor, verifique la información.';
     }
 
     console.error("Error completo en addEnrollment:", error);
     
-    // Error genérico para el usuario con sugerencias
-    throw new Error('No se pudo completar el registro. Verifique su conexión e intente nuevamente. Si el problema persiste, contacte al administrador.');
+    return { 
+      success: false, 
+      error: userMessage, 
+      data: null 
+    };
   }
 }
 
@@ -225,10 +235,9 @@ export async function getEnrollments(
     };
   }
 
-  // MODIFICACIÓN: Lógica para filtrar por usuario, incluyendo "PUBLIC_USER"
   if (filters.user) {
     if (filters.user === "PUBLIC_USER") {
-      where.userId = null; // Filtra por registros sin usuario asignado (Público)
+      where.userId = null;
     } else {
       where.user = {
         name: {
@@ -239,12 +248,9 @@ export async function getEnrollments(
     }
   }
 
-  // Consolida los filtros de Carrera.
   const careerWhere: Prisma.CareerWhereInput = {};
 
   if (filters.career) {
-    // CORRECCIÓN CLAVE: Usar 'equals' en lugar de 'contains' para asegurar que el filtro
-    // de carrera solo traiga registros de la carrera seleccionada y su turno asociado.
     careerWhere.name = {
       equals: filters.career,
       mode: 'insensitive',
@@ -255,7 +261,6 @@ export async function getEnrollments(
     where.career = careerWhere;
   }
   
-  // Filtro por nombre (mantiene la posición original)
   if (filters.name) {
     where.OR = [
       {
@@ -273,10 +278,8 @@ export async function getEnrollments(
     ];
   }
 
-  // Filtro por documentos (sin cambios en la lógica interna)
   if (filters.documentFilter) {
     if (filters.documentFilter === 'without') {
-      // Registros sin NINGÚN documento
       where.AND = [
         { cedulaFileFrente: null },
         { cedulaFileReverso: null },
@@ -285,7 +288,6 @@ export async function getEnrollments(
         { gradesCertificateFile: null },
       ];
     } else if (filters.documentFilter === 'with') {
-      // Registros con AL MENOS UN documento
       where.OR = [
         { cedulaFileFrente: { not: null } },
         { cedulaFileReverso: { not: null } },
@@ -294,7 +296,6 @@ export async function getEnrollments(
         { gradesCertificateFile: { not: null } },
       ];
     } else if (filters.documentFilter === 'complete') {
-      // Registros con TODOS los documentos
       where.AND = [
         { cedulaFileFrente: { not: null } },
         { cedulaFileReverso: { not: null } },
@@ -303,7 +304,6 @@ export async function getEnrollments(
         { gradesCertificateFile: { not: null } },
       ];
     }
-    // "all" no aplica ningún filtro de documentos
   }
 
   const [enrollments, total] = await Promise.all([
@@ -359,10 +359,13 @@ export async function updateEnrollment(id: string, data: Partial<Omit<Register, 
 
   const existingEnrollment = await prisma.register.findUnique({ where: { id } });
   if (!existingEnrollment) {
-    throw new Error("Matrícula no encontrada.");
+    return { 
+      success: false, 
+      error: "Matrícula no encontrada.",
+      data: null 
+    };
   }
 
-  // MODIFICADO: Incluir createdAt y userId en la desestructuración de data
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { birthDate, createdAt, userId, user: _user, career: _career, ...rest } = data;
   
@@ -374,17 +377,13 @@ export async function updateEnrollment(id: string, data: Partial<Omit<Register, 
     updateData.birthDate = new Date(birthDate);
   }
   
-  // NUEVO: Manejar la actualización de la fecha de registro (solo si se provee)
   if (createdAt) {
     updateData.createdAt = new Date(createdAt);
   }
   
-  // NUEVO: Manejar la asignación de usuario (incluyendo la desasignación con null)
   if (userId !== undefined) {
-    // Si userId es null, desconecta la relación (Público)
     updateData.user = userId === null ? { disconnect: true } : { connect: { id: userId } };
   }
-
 
   if (carreraTecnica) {
     updateData.career = {
@@ -442,49 +441,56 @@ export async function updateEnrollment(id: string, data: Partial<Omit<Register, 
     }
 
     revalidatePath('/');
-    revalidatePath(`/register/edit/${id}`); // Se usó esta ruta en el ejemplo anterior
+    revalidatePath(`/register/edit/${id}`);
     revalidatePath('/register');
-    return updatedEnrollment;
+    
+    return { 
+      success: true, 
+      error: null, 
+      data: updatedEnrollment 
+    };
 
   } catch (error) {
       if (newlyUploadedPublicIds.length > 0) {
           await cloudinary.api.delete_resources(newlyUploadedPublicIds).catch(console.error);
       }
       
+      let userMessage = 'No se pudo actualizar el registro. Verifique su conexión e intente nuevamente. Si el problema persiste, contacte al administrador.';
+      
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
           const target = (error.meta?.target as string[]) || [];
           if (target.includes('cedula')) {
-            throw new Error('La cédula ingresada ya está registrada en el sistema.');
+            userMessage = 'La cédula ingresada ya está registrada en el sistema.';
           }
           if (target.includes('email')) {
-            throw new Error('El correo electrónico ingresado ya está registrado en el sistema.');
+            userMessage = 'El correo electrónico ingresado ya está registrado en el sistema.';
           }
         }
         
-        // Manejar otros errores conocidos de Prisma
         if (error.code === 'P2025') {
-          throw new Error('No se encontró el registro solicitado.');
+          userMessage = 'No se encontró el registro solicitado.';
         }
         if (error.code === 'P2003') {
-          throw new Error('Error de referencia: La carrera seleccionada no existe.');
+          userMessage = 'Error de referencia: La carrera seleccionada no existe.';
         }
       }
 
-      // Manejar errores de Cloudinary
       if (error instanceof Error && error.message.includes('Cloudinary')) {
-        throw new Error('Error al subir los documentos. Por favor, intente nuevamente.');
+        userMessage = 'Error al subir los documentos. Por favor, intente nuevamente.';
       }
 
-      // Validación de datos
       if (error instanceof Error && error.message.includes('validation')) {
-        throw new Error('Datos de formulario inválidos. Por favor, verifique la información.');
+        userMessage = 'Datos de formulario inválidos. Por favor, verifique la información.';
       }
 
       console.error("Error completo en updateEnrollment:", error);
       
-      // Error genérico para el usuario con sugerencias
-      throw new Error('No se pudo actualizar el registro. Verifique su conexión e intente nuevamente. Si el problema persiste, contacte al administrador.');
+      return { 
+        success: false, 
+        error: userMessage, 
+        data: null 
+      };
   }
 }
 
@@ -568,26 +574,21 @@ export async function getEnrollmentStats() {
     where: { createdAt: { gte: startOfMonth } },
   });
 
-  // --- LÓGICA MODIFICADA PARA EL GRÁFICO ---
-  const startDate = new Date(2025, 9, 1); // Octubre de 2025 (mes 9)
+  const startDate = new Date(2025, 9, 1);
   const today = new Date();
 
-  // Calcular el número de meses desde la fecha de inicio hasta hoy
   const yearDiff = today.getFullYear() - startDate.getFullYear();
   const monthDiff = today.getMonth() - startDate.getMonth();
   const totalMonthsToShow = yearDiff * 12 + monthDiff + 1;
 
   const monthlyEnrollments = await Promise.all(
     Array.from({ length: totalMonthsToShow > 0 ? totalMonthsToShow : 0 }).map(async (_, i) => {
-      // Calculamos la fecha para cada mes en el rango
       const date = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
 
-      // Formateamos el nombre para que incluya mes y año (ej: "oct. 2025")
       const monthName = date.toLocaleString('es-NI', { month: 'short' });
       const year = date.getFullYear();
       const formattedName = `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${year}`;
 
-      // Definimos el inicio y fin de ese mes específico
       const start = new Date(date.getFullYear(), date.getMonth(), 1);
       const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
       end.setHours(23, 59, 59, 999);
@@ -627,7 +628,6 @@ export async function getEnrollmentStats() {
     return acc;
   }, []);
 
-
   const enrollmentsByAcademicLevel = enrollmentsByAcademicLevelRaw.map(item => ({
     name: item.nivelAcademico,
     total: item._count.nivelAcademico,
@@ -646,11 +646,10 @@ export async function getEnrollmentStats() {
     }))
     .sort((a, b) => a.age - b.age);
 
-
   return {
     totalEnrollments,
     monthlyTotal,
-    monthlyEnrollments, // Ya no es necesario invertirlo
+    monthlyEnrollments,
     enrollmentsByCareer,
     enrollmentsByLocation,
     enrollmentsByAcademicLevel,
