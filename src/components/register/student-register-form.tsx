@@ -36,13 +36,12 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
-import type { Register, User } from "@/lib/types"; // Importar User
+import type { Register, User } from "@/lib/types";
 import {
   addEnrollment,
   updateEnrollment as updateEnrollmentAction,
   getCareers,
 } from "@/lib/actions";
-import { savePendingEnrollment, updatePendingEnrollment } from "@/lib/storage";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { CalendarIcon, Loader2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -52,7 +51,7 @@ import type SignatureCanvas from "react-signature-canvas";
 import { ImageDropzone } from "../ui/image-dropzone";
 import dynamic from "next/dynamic";
 import { Career, Register as PrismaRegister } from "@prisma/client";
-import { FaRegAddressCard, FaRegCreditCard, FaFileAlt } from "react-icons/fa";
+import { FaRegAddressCard, FaRegCreditCard, FaFileAlt, FaWhatsapp } from "react-icons/fa";
 import { FcDiploma1 } from "react-icons/fc";
 import Swal from 'sweetalert2';
 
@@ -154,7 +153,6 @@ const formSchema = z
     birthCertificateFile: z.union([z.instanceof(File), z.string(), z.null()]).optional(),
     gradesCertificateFile: z.union([z.instanceof(File), z.string(), z.null()]).optional(),
 
-
     // Signature
     firmaProtagonista: z.string().optional(),
   })
@@ -205,26 +203,6 @@ const formSchema = z
           });
         }
       }
-
-      /*
-      if (finished) {
-        if (!data.diplomaFile) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ["diplomaFile"],
-            message: "El diploma es obligatorio si culminó bachillerato.",
-          });
-        }
-      } else {
-        if (!data.gradesCertificateFile) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ["gradesCertificateFile"],
-            message: "El certificado de notas es obligatorio si no culminó bachillerato.",
-          });
-        }
-      }
-      */
     }
   });
 
@@ -235,14 +213,75 @@ interface RegisterFormProps {
   user?: User;
 }
 
+// Función auxiliar para clasificar errores y mostrar mensajes claros
+function getErrorMessage(error: unknown): { userMessage: string; field?: keyof RegisterFormValues } {
+  if (!(error instanceof Error)) {
+    return { 
+      userMessage: "Error desconocido. Por favor, intente nuevamente." 
+    };
+  }
+
+  const message = error.message.toLowerCase();
+
+  // Errores de duplicados
+  if (message.includes('cédula') || message.includes('cedula')) {
+    return { 
+      userMessage: "La cédula ingresada ya está registrada en el sistema. Verifique el número o contacte al administrador.",
+      field: "cedula"
+    };
+  }
+  
+  if (message.includes('correo') || message.includes('email')) {
+    return { 
+      userMessage: "El correo electrónico ya está registrado en el sistema. Utilice otro correo o contacte al administrador.",
+      field: "email"
+    };
+  }
+
+  // Errores de Cloudinary (subida de archivos)
+  if (message.includes('cloudinary') || message.includes('upload') || message.includes('imagen')) {
+    return { 
+      userMessage: "Error al subir los documentos. Verifique que los archivos sean imágenes válidas y no muy pesadas."
+    };
+  }
+
+  // Errores de conexión
+  if (message.includes('network') || message.includes('conexión') || message.includes('conexion') || message.includes('fetch')) {
+    return { 
+      userMessage: "Error de conexión. Verifique su conexión a internet e intente nuevamente."
+    };
+  }
+
+  // Errores de validación
+  if (message.includes('validación') || message.includes('validacion') || message.includes('validation')) {
+    return { 
+      userMessage: "Datos del formulario inválidos. Por favor, revise todos los campos obligatorios."
+    };
+  }
+
+  // Errores de carrera
+  if (message.includes('carrera') || message.includes('career')) {
+    return { 
+      userMessage: "Error con la carrera seleccionada. Por favor, seleccione una carrera válida.",
+      field: "carreraTecnica"
+    };
+  }
+
+  // Error genérico con el mensaje original
+  return { 
+    userMessage: error.message || "Ocurrió un error inesperado. Por favor, intente nuevamente o contacte al administrador."
+  };
+}
+
 export default function StudentRegisterForm({ enrollment, user }: RegisterFormProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isOnline, setIsOnline] = useState(true);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [careers, setCareers] = useState<Career[]>([]);
   const [isUnderage, setIsUnderage] = useState(false);
   const [hasBirthDate, setHasBirthDate] = useState(false);
+  const [showWhatsAppButton, setShowWhatsAppButton] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchCareers() {
@@ -254,7 +293,7 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
 
   const sigCanvas = useRef<SignatureCanvas>(null);
   const isEditMode = !!enrollment;
-  const signatureColor = "black"; // <-- ❗ CAMBIO 1: Color de la firma siempre negro
+  const signatureColor = "black";
 
   const emptyDefaults: Partial<RegisterFormValues> = useMemo(() => ({
     nombres: "",
@@ -347,7 +386,8 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
   const finishedBachSelected = watch("finishedBachillerato") === "si";
   const birthDateValue = watch("birthDate");
   const carreraValue = watch("carreraTecnica");
-    const formatCedula = (value: string) => {
+
+  const formatCedula = (value: string) => {
     if (!value) return "";
     const cleaned = value.replace(/[^0-9A-Z]/gi, "").toUpperCase();
     const parts = [];
@@ -374,7 +414,6 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
       .join(' ');
   };
 
-
   useEffect(() => {
     if (birthDateValue) {
       const underage = !isAtLeast14YearsOld(birthDateValue);
@@ -395,20 +434,6 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
     }
   }, [birthDateValue, setValue, carreraValue, toast]);
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setIsOnline(navigator.onLine);
-      const handleOnline = () => setIsOnline(true);
-      const handleOffline = () => setIsOnline(false);
-      window.addEventListener("online", handleOnline);
-      window.addEventListener("offline", handleOffline);
-      return () => {
-        window.removeEventListener("online", handleOnline);
-        window.removeEventListener("offline", handleOffline);
-      };
-    }
-  }, []);
-
   const clearSignature = () => {
     sigCanvas.current?.clear();
   };
@@ -422,9 +447,35 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
     });
   };
 
+  // Función para abrir WhatsApp con mensaje predefinido
+  const openWhatsAppContact = () => {
+    const phoneNumber = "50584433992";
+    const defaultMessage = `Hola, necesito ayuda con el formulario de matrícula.`;
+    
+    const errorDetails = lastError ? `\n\nError encontrado: ${lastError}` : '';
+    const userInfo = form.getValues();
+    const userDetails = `\n\nDatos del formulario:
+    - Nombre: ${userInfo.nombres} ${userInfo.apellidos}
+    - Teléfono: ${userInfo.telefonoCelular}
+    ${userInfo.email ? `- Email: ${userInfo.email}` : ''}
+    ${userInfo.cedula ? `- Cédula: ${userInfo.cedula}` : ''}`;
+    
+    const fullMessage = `${defaultMessage}${errorDetails}${userDetails}`;
+    const encodedMessage = encodeURIComponent(fullMessage);
+    
+    window.open(`https://wa.me/${phoneNumber}?text=${encodedMessage}`, '_blank');
+  };
+
   async function onSubmit(data: RegisterFormValues) {
+    // Prevenir múltiples envíos
+    if (isSubmitting) {
+      return;
+    }
+    
     setIsSubmitting(true);
-    form.clearErrors(["cedula", "email", "carreraTecnica"]);
+    setLastError(null);
+    setShowWhatsAppButton(false);
+    form.clearErrors();
 
     const { hasCedula, finishedBachillerato, ...rest } = data;
 
@@ -465,18 +516,11 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
     }
 
     try {
-      if (isOnline) {
-        if (isEditMode && enrollment) {
-          await updateEnrollmentAction(enrollmentData.id, enrollmentData);
-        } else {
-          await addEnrollment(enrollmentData, user?.id);
-        }
+      // Siempre enviar al servidor
+      if (isEditMode && enrollment) {
+        await updateEnrollmentAction(enrollmentData.id, enrollmentData);
       } else {
-        if (isEditMode && enrollment) {
-          updatePendingEnrollment(enrollmentData);
-        } else {
-          savePendingEnrollment(enrollmentData);
-        }
+        await addEnrollment(enrollmentData, user?.id);
       }
 
       Swal.fire({
@@ -494,20 +538,36 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
 
     } catch (error: unknown) {
       console.error("Form submission error:", error);
-      const message = error instanceof Error ? error.message : String(error);
+      
+      const { userMessage, field } = getErrorMessage(error);
+      setLastError(userMessage);
+      setShowWhatsAppButton(true);
 
+      // Mostrar alerta mejorada con SweetAlert2
       Swal.fire({
         title: 'Error en el Envío',
-        text: message || `No se pudo ${isEditMode ? "actualizar" : "guardar"} la matrícula.`,
+        html: `
+          <div class="text-left">
+            <p class="mb-3">${userMessage}</p>
+            <p class="text-xs text-gray-500 mt-2">
+              Si el problema persiste, contacte al administrador del sistema.
+            </p>
+          </div>
+        `,
         icon: 'error',
         confirmButtonColor: '#d33',
-        confirmButtonText: 'Intentar de nuevo'
+        confirmButtonText: 'Entendido',
+        customClass: {
+          popup: 'text-left'
+        }
       });
 
-      if (/c[eé]dula/i.test(message)) {
-        form.setError("cedula", { type: "manual", message });
-      } else if (/correo|email|correo electrónico|correo-electr[oó]nico/i.test(message)) {
-        form.setError("email", { type: "manual", message });
+      // Establecer error en el campo específico si corresponde - CORREGIDO SIN ANY
+      if (field) {
+        form.setError(field, { 
+          type: "manual", 
+          message: userMessage 
+        });
       }
     } finally {
       setIsSubmitting(false);
@@ -1107,7 +1167,7 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                       // @ts-expect-error: 'ref' is not a valid prop for this component.
                       ref={sigCanvas}
                       penColor={signatureColor}
-                      canvasProps={{ className: "w-full h-full rounded-md bg-white dark:bg-gray-900" }} // <-- ❗ CAMBIO 2: Fondo siempre blanco
+                      canvasProps={{ className: "w-full h-full rounded-md bg-white dark:bg-gray-900" }}
                     />
                     <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 dark:text-white" onClick={clearSignature}>
                       <RefreshCw className="h-4 w-4" />
@@ -1121,12 +1181,24 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
 
           <p className="text-sm text-muted-foreground">La fecha de registro se guardará automáticamente.</p>
 
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex flex-col gap-3">
             <Button type="submit" className="w-full" disabled={isSubmitting || isUnderage}>
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isEditMode ? "Actualizar Matrícula" : "Guardar Matrícula"}
               {isUnderage && " (Debe tener al menos 14 años)"}
             </Button>
+
+            {/* Botón de contacto de WhatsApp - Solo visible cuando hay error */}
+            {showWhatsAppButton && (
+              <Button 
+                type="button"
+                className="w-full bg-green-600 text-white hover:bg-green-700"
+                onClick={openWhatsAppContact}
+              >
+                <FaWhatsapp className="mr-2 h-4 w-4" />
+                Contactar al administrador por WhatsApp
+              </Button>
+            )}
           </div>
         </form>
       </Form>

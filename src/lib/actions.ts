@@ -159,21 +159,43 @@ export async function addEnrollment(enrollment: Register, userId?: string) {
   } catch (error) {
     if (uploadedImagePublicIds.length > 0) {
       console.log(`Error during database operation. Deleting ${uploadedImagePublicIds.length} uploaded images...`);
-      await cloudinary.api.delete_resources(uploadedImagePublicIds);
+      await cloudinary.api.delete_resources(uploadedImagePublicIds).catch(console.error);
     }
 
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      const target = (error.meta?.target as string[]) || [];
-      if (target.includes('cedula')) {
-        throw new Error('Error: La cédula ingresada ya existe.');
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') {
+        const target = (error.meta?.target as string[]) || [];
+        if (target.includes('cedula')) {
+          throw new Error('La cédula ingresada ya está registrada en el sistema.');
+        }
+        if (target.includes('email')) {
+          throw new Error('El correo electrónico ingresado ya está registrado en el sistema.');
+        }
       }
-      if (target.includes('email')) {
-        throw new Error('Error: El correo electrónico ingresado ya existe.');
+      
+      // Manejar otros errores conocidos de Prisma
+      if (error.code === 'P2025') {
+        throw new Error('No se encontró el registro solicitado.');
+      }
+      if (error.code === 'P2003') {
+        throw new Error('Error de referencia: La carrera seleccionada no existe.');
       }
     }
-    // MODIFICADO: Loguear el error completo en el servidor para facilitar la depuración
+
+    // Manejar errores de Cloudinary
+    if (error instanceof Error && error.message.includes('Cloudinary')) {
+      throw new Error('Error al subir los documentos. Por favor, intente nuevamente.');
+    }
+
+    // Validación de datos
+    if (error instanceof Error && error.message.includes('validation')) {
+      throw new Error('Datos de formulario inválidos. Por favor, verifique la información.');
+    }
+
     console.error("Error completo en addEnrollment:", error);
-    throw error;
+    
+    // Error genérico para el usuario con sugerencias
+    throw new Error('No se pudo completar el registro. Verifique su conexión e intente nuevamente. Si el problema persiste, contacte al administrador.');
   }
 }
 
@@ -426,11 +448,43 @@ export async function updateEnrollment(id: string, data: Partial<Omit<Register, 
 
   } catch (error) {
       if (newlyUploadedPublicIds.length > 0) {
-          await cloudinary.api.delete_resources(newlyUploadedPublicIds);
+          await cloudinary.api.delete_resources(newlyUploadedPublicIds).catch(console.error);
       }
-      // MODIFICADO: Loguear el error completo en el servidor
+      
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2002') {
+          const target = (error.meta?.target as string[]) || [];
+          if (target.includes('cedula')) {
+            throw new Error('La cédula ingresada ya está registrada en el sistema.');
+          }
+          if (target.includes('email')) {
+            throw new Error('El correo electrónico ingresado ya está registrado en el sistema.');
+          }
+        }
+        
+        // Manejar otros errores conocidos de Prisma
+        if (error.code === 'P2025') {
+          throw new Error('No se encontró el registro solicitado.');
+        }
+        if (error.code === 'P2003') {
+          throw new Error('Error de referencia: La carrera seleccionada no existe.');
+        }
+      }
+
+      // Manejar errores de Cloudinary
+      if (error instanceof Error && error.message.includes('Cloudinary')) {
+        throw new Error('Error al subir los documentos. Por favor, intente nuevamente.');
+      }
+
+      // Validación de datos
+      if (error instanceof Error && error.message.includes('validation')) {
+        throw new Error('Datos de formulario inválidos. Por favor, verifique la información.');
+      }
+
       console.error("Error completo en updateEnrollment:", error);
-      throw error;
+      
+      // Error genérico para el usuario con sugerencias
+      throw new Error('No se pudo actualizar el registro. Verifique su conexión e intente nuevamente. Si el problema persiste, contacte al administrador.');
   }
 }
 

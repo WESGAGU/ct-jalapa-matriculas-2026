@@ -6,6 +6,7 @@ import { Marquee } from "@/components/register/public/estrategia-nacional/marque
 import { useRef } from "react";
 import { MdBusinessCenter, MdPets, MdSchool } from "react-icons/md";
 import { GiFarmTractor } from "react-icons/gi";
+import { FaFileInvoiceDollar, FaSeedling } from "react-icons/fa";
 import { ModeToggle } from "@/components/mode-toggle";
 import ContactSection from "@/components/register/public/contact-section";
 import Link from "next/link";
@@ -63,211 +64,249 @@ interface Career {
 }
 
 const careers: Career[] = [
-    {
-        title: "Administración",
-        subtitle: "Técnico General en Administración",
-        university: "Licenciatura en Administración de Empresas",
-        year: "Segundo año",
-        secondYearText: "Ingreso a 2do año",
-        thirdYearText: "Ingreso a 3er año",
-        secondYearUniversities: [
-          "UNAN-Managua", "UNP", "UNCSM", "UNA", "BICU", "UNFLEP", "URACCAN",
-        ],
-        thirdYearUniversities: ["UNAN-León"],
-        description:
-          "Convalida materias técnicas de administración, contabilidad y gestión para continuar estudios universitarios con avance curricular.",
-        icon: <MdBusinessCenter className="w-7 h-7 text-white" />,
-        gradient: "from-blue-600 to-blue-700",
-        darkGradient: "from-blue-700 to-blue-800",
-        badgeColor: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200",
-        badgeBorder: "border-blue-200 dark:border-blue-800",
-        image: "/estrategia-nacional/tg-administracion.jpg",
-      },
-      {
-        title: "Veterinaria",
-        subtitle: "Técnico General en Veterinaria",
-        university: "Medicina Veterinaria / Medicina Veterinaria y Zootecnia",
-        year: "Segundo año",
-        secondYearText: "Ingreso a 2do año Medicina Veterinaria",
-        thirdYearText: "Ingreso a 3er año Medicina Veterinaria y Zootecnia",
-        secondYearUniversities: ["URACCAN", "BICU", "UNA", "UNFLEP"],
-        thirdYearUniversities: ["UNIAV"],
-        description:
-          "Formación en salud animal, sanidad y aspectos clínicos. Las convalidaciones permiten continuar en carreras veterinarias con reconocimiento de competencias técnicas.",
-        icon: <MdPets className="w-7 h-7 text-white" />,
-        gradient: "from-emerald-600 to-emerald-700",
-        darkGradient: "from-emerald-700 to-emerald-800",
-        badgeColor: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200",
-        badgeBorder: "border-emerald-200 dark:border-emerald-800",
-        image: "/veterinaria/img18.jpeg",
-      },
-      {
-        title: "Zootecnia",
-        subtitle: "Técnico General en Zootecnia",
-        university: "Medicina Veterinaria y Zootecnia / Ingeniería en Zootecnia",
-        year: "Segundo año",
-        secondYearText: "Ingreso a 2do año ambas carreras",
-        thirdYearText: "Ingreso a 3er año (si aplica)",
-        secondYearUniversities: ["UNA", "URACCAN", "UNFLEP", "BICU", "UNIAV"],
-        thirdYearUniversities: [],
-        description:
-          "Enfocado en producción animal, manejo de especies y mejoramiento genético. Facilita el acceso a programas universitarios con créditos convalidados.",
-        icon: <GiFarmTractor className="w-7 h-7 text-white" />,
-        gradient: "from-amber-600 to-amber-700",
-        darkGradient: "from-amber-700 to-amber-800",
-        badgeColor: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200",
-        badgeBorder: "border-amber-200 dark:border-amber-800",
-        image: "/zootecnia/img5.jpg",
-      },
+  {
+    title: "Administración",
+    subtitle: "Técnico General en Administración",
+    university: "Licenciatura en Administración de Empresas",
+    year: "Segundo año",
+    secondYearText: "Ingreso a 2do año",
+    thirdYearText: "Ingreso a 3er año",
+    secondYearUniversities: [
+      "UNAN-Managua", "UNP", "UNCSM", "UNA", "BICU", "UNFLEP", "URACCAN",
+    ],
+    thirdYearUniversities: ["UNAN-León"],
+    description:
+      "Convalida materias técnicas de administración, contabilidad y gestión para continuar estudios universitarios con avance curricular.",
+    icon: <MdBusinessCenter className="w-7 h-7 text-white" />,
+    gradient: "from-blue-600 to-blue-700",
+    darkGradient: "from-blue-700 to-blue-800",
+    badgeColor: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200",
+    badgeBorder: "border-blue-200 dark:border-blue-800",
+    image: "/estrategia-nacional/tg-administracion.jpg",
+  },
+  {
+    title: "Veterinaria",
+    subtitle: "Técnico General en Veterinaria",
+    university: "Medicina Veterinaria / Medicina Veterinaria y Zootecnia",
+    year: "Segundo año",
+    secondYearText: "Ingreso a 2do año Medicina Veterinaria",
+    thirdYearText: "Ingreso a 3er año Medicina Veterinaria y Zootecnia",
+    secondYearUniversities: ["URACCAN", "BICU", "UNA", "UNFLEP"],
+    thirdYearUniversities: ["UNIAV"],
+    description:
+      "Formación en salud animal, sanidad y aspectos clínicos. Las convalidaciones permiten continuar en carreras veterinarias con reconocimiento de competencias técnicas.",
+    icon: <MdPets className="w-7 h-7 text-white" />,
+    gradient: "from-emerald-600 to-emerald-700",
+    darkGradient: "from-emerald-700 to-emerald-800",
+    badgeColor: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200",
+    badgeBorder: "border-emerald-200 dark:border-emerald-800",
+    image: "/veterinaria/img18.jpeg",
+  },
+  {
+    title: "Zootecnia",
+    subtitle: "Técnico General en Zootecnia",
+    university: "Medicina Veterinaria y Zootecnia / Ingeniería en Zootecnia",
+    year: "Segundo año",
+    secondYearText: "Ingreso a 2do año ambas carreras",
+    thirdYearText: "Ingreso a 3er año (si aplica)",
+    secondYearUniversities: ["UNA", "URACCAN", "UNFLEP", "BICU", "UNIAV"],
+    thirdYearUniversities: [],
+    description:
+      "Enfocado en producción animal, manejo de especies y mejoramiento genético. Facilita el acceso a programas universitarios con créditos convalidados.",
+    icon: <GiFarmTractor className="w-7 h-7 text-white" />,
+    gradient: "from-amber-600 to-amber-700",
+    darkGradient: "from-amber-700 to-amber-800",
+    badgeColor: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200",
+    badgeBorder: "border-amber-200 dark:border-amber-800",
+    image: "/zootecnia/img5.jpg",
+  },
+  {
+    title: "Contabilidad",
+    subtitle: "Técnico General en Contabilidad",
+    university: "Licenciatura en Contaduría pública y finanzas",
+    year: "Segundo año",
+    secondYearText: "Ingreso a 2do año",
+    thirdYearText: "Ingreso a 3er año",
+    secondYearUniversities: [
+      "UNCSM", "UNP", "UNAN-Managua", "UNAN-León", "URACCAN", "BICU",
+    ],
+    thirdYearUniversities: [],
+    description:
+      "Formación en procesos contables, finanzas y auditoría. Permite la convalidación para avanzar en la licenciatura y fortalecer el perfil financiero.",
+    icon: <FaFileInvoiceDollar className="w-7 h-7 text-white" />,
+    gradient: "from-purple-600 to-purple-700",
+    darkGradient: "from-purple-700 to-purple-800",
+    badgeColor: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200",
+    badgeBorder: "border-purple-200 dark:border-purple-800",
+    image: "/contabilidad/img10.jpg",
+  },
+  {
+    title: "Agropecuaria",
+    subtitle: "Técnico General en Agropecuaria",
+    university: "Ingeniería agronómica",
+    year: "Tercer año",
+    secondYearText: "Ingreso a 2do año",
+    thirdYearText: "Ingreso a 3er año",
+    secondYearUniversities: [],
+    thirdYearUniversities: ["UNA", "UNFLEP", "UNIAV"],
+    description:
+      "Competencias en producción agrícola, manejo de cultivos y agronomía. Facilita el ingreso avanzado a Ingeniería Agronómica para un perfil profesional completo.",
+    icon: <FaSeedling className="w-7 h-7 text-white" />,
+    gradient: "from-green-600 to-green-700",
+    darkGradient: "from-green-700 to-green-800",
+    badgeColor: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200",
+    badgeBorder: "border-green-200 dark:border-green-800",
+    image: "/agropecuaria/img8.jpg",
+  },
 ];
 
 const benefits = [
-    {
-      title: "Ahorro de Tiempo",
-      description:
-        "Avanza al segundo o tercer año universitario sin repetir contenidos ya dominados.",
-      icon: (
-        <svg
-          className="w-7 h-7 text-white"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-      ),
-      gradient: "from-blue-500 to-blue-600",
-    },
-    {
-      title: "Ahorro Económico",
-      description:
-        "Reduce costos de matrícula y materiales al convalidar años completos de estudio.",
-      icon: (
-        <svg
-          className="w-7 h-7 text-white"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-      ),
-      gradient: "from-cyan-500 to-cyan-600",
-    },
-    {
-      title: "Mayor Empleabilidad",
-      description:
-        "Combina formación técnica práctica con conocimientos universitarios avanzados.",
-      icon: (
-        <svg
-          className="w-7 h-7 text-white"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-          />
-        </svg>
-      ),
-      gradient: "from-blue-500 to-cyan-500",
-    },
+  {
+    title: "Ahorro de Tiempo",
+    description:
+      "Avanza al segundo o tercer año universitario sin repetir contenidos ya dominados.",
+    icon: (
+      <svg
+        className="w-7 h-7 text-white"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+      </svg>
+    ),
+    gradient: "from-blue-500 to-blue-600",
+  },
+  {
+    title: "Ahorro Económico",
+    description:
+      "Reduce costos de matrícula y materiales al convalidar años completos de estudio.",
+    icon: (
+      <svg
+        className="w-7 h-7 text-white"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2m0-8c1.11 0 2.08 .402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+      </svg>
+    ),
+    gradient: "from-cyan-500 to-cyan-600",
+  },
+  {
+    title: "Mayor Empleabilidad",
+    description:
+      "Combina formación técnica práctica con conocimientos universitarios avanzados.",
+    icon: (
+      <svg
+        className="w-7 h-7 text-white"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+        />
+      </svg>
+    ),
+    gradient: "from-blue-500 to-cyan-500",
+  },
 ];
 
 const features = [
-    {
-      title: "Reconocimiento de competencias",
-      description: "Convalidación de asignaturas y saberes técnicos adquiridos",
-      icon: (
-        <svg
-          className="w-5 h-5 text-blue-600 dark:text-blue-400"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-      ),
-      bgColor: "bg-blue-100 dark:bg-blue-900/30",
-    },
-    {
-      title: "Vinculación institucional",
-      description: "Articulación entre centros técnicos y universidades públicas",
-      icon: (
-        <svg
-          className="w-5 h-5 text-cyan-600 dark:text-cyan-400"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M13 10V3L4 14h7v7l9-11h-7z"
-          />
-        </svg>
-      ),
-      bgColor: "bg-cyan-100 dark:bg-cyan-900/30",
-    },
-    {
-      title: "Desarrollo del talento humano",
-      description: "Responde a necesidades productivas y de desarrollo local",
-      icon: (
-        <svg
-          className="w-5 h-5 text-blue-600 dark:text-blue-400"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-          />
-        </svg>
-      ),
-      bgColor: "bg-blue-100 dark:bg-blue-900/30",
-    },
-    {
-      title: "Formación integral",
-      description: "Fortalece el vínculo entre educación técnica y superior",
-      icon: (
-        <svg
-          className="w-5 h-5 text-cyan-600 dark:text-cyan-400"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-          />
-        </svg>
-      ),
-      bgColor: "bg-cyan-100 dark:bg-cyan-900/30",
-    },
+  {
+    title: "Reconocimiento de competencias",
+    description: "Convalidación de asignaturas y saberes técnicos adquiridos",
+    icon: (
+      <svg
+        className="w-5 h-5 text-blue-600 dark:text-blue-400"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+      </svg>
+    ),
+    bgColor: "bg-blue-100 dark:bg-blue-900/30",
+  },
+  {
+    title: "Vinculación institucional",
+    description: "Articulación entre centros técnicos y universidades públicas",
+    icon: (
+      <svg
+        className="w-5 h-5 text-cyan-600 dark:text-cyan-400"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M13 10V3L4 14h7v7l9-11h-7z"
+        />
+      </svg>
+    ),
+    bgColor: "bg-cyan-100 dark:bg-cyan-900/30",
+  },
+  {
+    title: "Desarrollo del talento humano",
+    description: "Responde a necesidades productivas y de desarrollo local",
+    icon: (
+      <svg
+        className="w-5 h-5 text-blue-600 dark:text-blue-400"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+        />
+      </svg>
+    ),
+    bgColor: "bg-blue-100 dark:bg-blue-900/30",
+  },
+  {
+    title: "Formación integral",
+    description: "Fortalece el vínculo entre educación técnica y superior",
+    icon: (
+      <svg
+        className="w-5 h-5 text-cyan-600 dark:text-cyan-400"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+        />
+      </svg>
+    ),
+    bgColor: "bg-cyan-100 dark:bg-cyan-900/30",
+  },
 ];
 
 function AnimatedSection({
@@ -363,26 +402,35 @@ function CareerCard({ career, index }: { career: Career; index: number }) {
             </p>
           </div>
           <div className="space-y-4 sm:space-y-6">
-            <div>
-              <div className="flex items-center gap-2 mb-2 sm:mb-3">
-                <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                <span className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                  {career.secondYearText}
-                </span>
+
+            {/* --- INICIO CAMBIO 1 ---
+              Se envuelve este bloque en un condicional.
+              Ahora solo se mostrará si hay universidades en "secondYearUniversities"
+            */}
+            {career.secondYearUniversities.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                  <span className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                    {career.secondYearText}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1 sm:gap-2">
+                  {career.secondYearUniversities.map(
+                    (uni: string, uniIndex: number) => (
+                      <span
+                        key={uniIndex}
+                        className={`px-2 py-1 sm:px-3 sm:py-1.5 ${career.badgeColor} ${career.badgeBorder} rounded-full text-xs font-medium border`}
+                      >
+                        {uni}
+                      </span>
+                    )
+                  )}
+                </div>
               </div>
-              <div className="flex flex-wrap gap-1 sm:gap-2">
-                {career.secondYearUniversities.map(
-                  (uni: string, uniIndex: number) => (
-                    <span
-                      key={uniIndex}
-                      className={`px-2 py-1 sm:px-3 sm:py-1.5 ${career.badgeColor} ${career.badgeBorder} rounded-full text-xs font-medium border`}
-                    >
-                      {uni}
-                    </span>
-                  )
-                )}
-              </div>
-            </div>
+            )}
+            {/* --- FIN CAMBIO 1 --- */}
+
             {career.thirdYearUniversities.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 mb-2 sm:mb-3">
@@ -426,14 +474,20 @@ export default function ContinuidadEducativa() {
         </div>
 
         <div className="max-w-6xl mx-auto text-center">
+
+          {/* --- INICIO CAMBIO 2 ---
+             Se cambió el className para aplicar nuevo estilo de fuente y color.
+          */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.6 }}
-            className="inline-block px-4 py-1.5 rounded-full text-blue-700 dark:text-blue-300 text-lg font-medium mb-6 lg:mb-10 lg:text-3xl"
+            className="inline-block px-4 py-1.5 rounded-full text-lg font-bold mb-6 lg:mb-10 lg:text-3xl bg-gradient-to-r from-emerald-500 to-blue-600 dark:from-emerald-400 dark:to-blue-500 bg-clip-text text-transparent"
           >
             Centro Tenólogico de Jalapa
           </motion.div>
+          {/* --- FIN CAMBIO 2 --- */}
+
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -633,7 +687,7 @@ export default function ContinuidadEducativa() {
               </p>
             </div>
           </AnimatedSection>
-          <div className="flex flex-col lg:flex-row gap-6 sm:gap-8 w-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 w-full">
             {careers.map((career, index) => (
               <CareerCard key={index} career={career} index={index} />
             ))}
