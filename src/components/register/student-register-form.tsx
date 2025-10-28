@@ -1185,8 +1185,6 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
             </AccordionItem>
           </Accordion>
 
-          <p className="text-sm text-muted-foreground">La fecha de registro se guardará automáticamente.</p>
-
           <div className="flex flex-col gap-3">
             <Button type="submit" className="w-full" disabled={isSubmitting || isUnderage}>
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -1198,11 +1196,11 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
             {showWhatsAppButton && (
               <Button 
                 type="button"
-                className="w-full bg-green-600 text-white hover:bg-green-700"
+                className="w-full  bg-green-600 text-white hover:bg-green-700"
                 onClick={openWhatsAppContact}
               >
                 <FaWhatsapp className="mr-2 h-4 w-4" />
-                Contactar al administrador por WhatsApp
+                Contactar al administrador
               </Button>
             )}
           </div>
