@@ -11,6 +11,8 @@ import { ModeToggle } from "@/components/mode-toggle";
 import ContactSection from "@/components/register/public/contact-section";
 import Link from "next/link";
 import Image from "next/image";
+import UniversityCarousel from "@/components/register/public/estrategia-nacional/university-carouse";
+import StrategyContact from "@/components/register/public/estrategia-nacional/strategy-contact";
 
 const institutions = [
   {
@@ -474,7 +476,6 @@ export default function ContinuidadEducativa() {
         </div>
 
         <div className="max-w-6xl mx-auto text-center">
-
           {/* --- INICIO CAMBIO 2 ---
              Se cambió el className para aplicar nuevo estilo de fuente y color.
           */}
@@ -482,7 +483,7 @@ export default function ContinuidadEducativa() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.6 }}
-            className="inline-block px-4 py-1.5 rounded-full text-lg font-bold mb-6 lg:mb-10 lg:text-3xl bg-gradient-to-r from-emerald-500 to-blue-600 dark:from-emerald-400 dark:to-blue-500 bg-clip-text text-transparent"
+            className="inline-block  py-1.5 rounded-full text-lg font-bold mb-6 lg:mb-10 lg:text-3xl bg-gradient-to-r from-emerald-500 to-blue-600 dark:from-emerald-400 dark:to-blue-500 bg-clip-text text-transparent"
           >
             Centro Tenólogico de Jalapa
           </motion.div>
@@ -531,7 +532,7 @@ export default function ContinuidadEducativa() {
         </div>
       </motion.section>
 
-      <section className="py-12 px-4 sm:px-6">
+      <section className="py-12  sm:px-6">
         <Marquee pauseOnHover className="[--duration:40s]">
           {institutions.map((institution, index) => (
             <motion.div
@@ -552,7 +553,7 @@ export default function ContinuidadEducativa() {
         </Marquee>
       </section>
 
-      <section className="py-16 sm:py-20 px-4 sm:px-6">
+      <section className="py-16 sm:py-20  sm:px-6">
         <div className="max-w-6xl mx-auto">
           <AnimatedSection>
             <div className="text-center mb-12 sm:mb-16">
@@ -637,7 +638,7 @@ export default function ContinuidadEducativa() {
         </div>
       </section>
 
-      <section id="beneficios" className="py-16 sm:py-20 px-4 sm:px-6">
+      <section id="beneficios" className="py-16 sm:py-20  sm:px-6">
         <div className="max-w-6xl mx-auto">
           <AnimatedSection>
             <div className="text-center mb-12 sm:mb-16">
@@ -674,7 +675,7 @@ export default function ContinuidadEducativa() {
         </div>
       </section>
 
-      <section id="carreras" className="py-16 sm:py-20 px-4 sm:px-6">
+      <section id="carreras" className="py-16 sm:py-20  sm:px-6">
         <div className="max-w-7xl mx-auto w-full">
           <AnimatedSection>
             <div className="text-center mb-12 sm:mb-16">
@@ -694,38 +695,41 @@ export default function ContinuidadEducativa() {
           </div>
           <div className="mt-16 text-center">
             <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              viewport={{ once: false, amount: 0.3 }}
               className="inline-block"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
             >
-              <Link
-                href="/public-register"
-                className="inline-block px-2 py-4 lg:px-8  text-sm lg:text-lg font-semibold text-white bg-blue-600 rounded-full shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Mira las Actividades de nuestros Estudiantes
-              </Link>
+              <UniversityCarousel />
+              
             </motion.div>
           </div>
         </div>
       </section>
 
-      <section id="contacto" className="py-16 sm:py-20 px-4 sm:px-6">
+      <section>
+        <StrategyContact/>
+      </section>
+
+      <section id="contacto" className="py-12">
         <div className=" mx-auto w-full">
           <AnimatedSection>
             <ContactSection />
+
             <div className="flex justify-center  text-sm text-black/45 dark:text-white/45">
-              <p>
-                &copy; {new Date().getFullYear()}{" "}
-                <span>
-                  <Link
-                    href="https://www.instagram.com/garciawes12/"
-                    target="_blank"
-                  >
-                    Wesling García
-                  </Link>
-                </span>
-              </p>
-            </div>
+          <p>
+            &copy; {new Date().getFullYear()}{" "}
+            <span>
+              <Link
+                href="https://www.instagram.com/garciawes12/"
+                target="_blank"
+              >
+                Wesling García
+              </Link>
+            </span>
+          </p>
+        </div>
           </AnimatedSection>
         </div>
       </section>
