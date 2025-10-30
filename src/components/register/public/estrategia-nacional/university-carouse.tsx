@@ -302,7 +302,7 @@ export default function UniversityCarousel() {
                         href={universities[currentSlide].website}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="group/link md:px-6 py-2 md:py-3 bg-white hover:bg-slate-50 text-blue-600 hover:text-blue-700 rounded-full text-xs md:text-sm font-semibold transition-all duration-300 flex items-center gap-2 shadow-lg hover:shadow-xl"
+                        className="group/link md:px-6 py-2 px-4 md:py-3 bg-white hover:bg-slate-50 text-blue-600 hover:text-blue-700 rounded-full text-xs md:text-sm font-semibold transition-all duration-300 flex items-center gap-2 shadow-lg hover:shadow-xl"
                       >
                         <ExternalLink className="w-3 h-3 md:w-4 md:h-4 group-hover/link:rotate-12 transition-transform duration-300" />
                         Visitar sitio web
