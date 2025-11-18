@@ -47,7 +47,20 @@ async function uploadImage(dataUri: string | undefined | null): Promise<{ url: s
   }
 }
 
-// --- NUEVA FUNCIÓN PARA MARCAR COMO IMPRESO ---
+// --- NUEVA FUNCIÓN: PING PARA EVITAR INACTIVIDAD (NEON) ---
+export async function pingDatabase() {
+  try {
+    // Ejecuta una consulta ultraligera para mantener la conexión viva o despertarla
+    await prisma.$queryRaw`SELECT 1`;
+    return { success: true };
+  } catch (error) {
+    console.error("Database ping failed:", error);
+    return { success: false };
+  }
+}
+// ----------------------------------------------------------
+
+// --- FUNCIÓN PARA MARCAR COMO IMPRESO ---
 export async function markAsPrinted(id: string) {
   try {
     await prisma.register.update({
@@ -236,7 +249,7 @@ export async function getEnrollments(
     career?: string;
     name?: string;
     documentFilter?: string;
-    printedFilter?: string; // <--- NUEVO PARÁMETRO
+    printedFilter?: string;
   } = {}
 ) {
   await new Promise((resolve) => setTimeout(resolve, 500));
@@ -333,7 +346,6 @@ export async function getEnrollments(
       where.isPrinted = false;
     }
   }
-  // -------------------------------------
 
   const [enrollments, total] = await Promise.all([
     prisma.register.findMany({

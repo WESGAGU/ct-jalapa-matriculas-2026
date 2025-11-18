@@ -15,10 +15,13 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, X, ArrowRight } from "lucide-react";
+// Se agregó Loader2 a las importaciones
+import { PlusCircle, X, ArrowRight, Loader2 } from "lucide-react"; 
 import { cn } from "@/lib/utils";
 import StudentQuestions from "@/components/register/public/student-questions";
 import BlurText from "@/components/ui/BlurText";
+// Importamos la acción para despertar la base de datos
+import { pingDatabase } from "@/lib/actions"; 
 
 // --- Helper Hook y Componente para Animación de Scroll ---
 
@@ -118,6 +121,22 @@ const StrategyLinkCard = () => {
 
 export default function NewPublicRegisterPage() {
   const [isFormVisible, setIsFormVisible] = useState(false);
+  const [isSystemReady, setIsSystemReady] = useState(false); // Estado de "Despertando BD"
+
+  // Efecto para despertar la base de datos al entrar a la página
+  useEffect(() => {
+    const wakeUpDatabase = async () => {
+      try {
+        await pingDatabase();
+      } catch (error) {
+        console.error("Error warming up DB:", error);
+      } finally {
+        // Habilitamos el botón ya sea que responda bien o mal (para no bloquear al usuario eternamente)
+        setIsSystemReady(true);
+      }
+    };
+    wakeUpDatabase();
+  }, []);
 
   const toggleFormVisibility = () => {
     setIsFormVisible(!isFormVisible);
@@ -157,14 +176,22 @@ export default function NewPublicRegisterPage() {
 
             {!isFormVisible && (
               <div className="mt-10">
-                <Button
-                  size="lg"
-                  onClick={toggleFormVisibility}
-                  className="animate-bounce"
-                >
-                  <PlusCircle className="mr-2 h-5 w-5" />
-                  ¡Inscríbete Ahora!
-                </Button>
+                {/* Lógica condicional para el botón de carga */}
+                {!isSystemReady ? (
+                    <Button size="lg" disabled className="opacity-90 cursor-not-allowed">
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Iniciando sistema...
+                    </Button>
+                ) : (
+                    <Button
+                    size="lg"
+                    onClick={toggleFormVisibility}
+                    className="animate-bounce"
+                    >
+                    <PlusCircle className="mr-2 h-5 w-5" />
+                    ¡Inscríbete Ahora!
+                    </Button>
+                )}
               </div>
             )}
           </div>
@@ -201,7 +228,7 @@ export default function NewPublicRegisterPage() {
         </div>
       )}
 
-     
+      
       <AnimatedSection>
         <StudentActivities />
       </AnimatedSection>
