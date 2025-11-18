@@ -60,6 +60,8 @@ import {
 } from "react-icons/fa";
 import { FcDiploma1 } from "react-icons/fc";
 import Swal from "sweetalert2";
+// Importamos el hook de conexión <--- MODIFICACIÓN
+import { useOnlineStatus } from "@/components/connection-status";
 
 const SignaturePad = dynamic(() => import("react-signature-canvas"), {
   ssr: false,
@@ -348,6 +350,9 @@ export default function StudentRegisterForm({
   const [hasBirthDate, setHasBirthDate] = useState(false);
   const [showWhatsAppButton, setShowWhatsAppButton] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
+  
+  // Usar el hook de estado de conexión <--- AÑADIDO
+  const isOnline = useOnlineStatus();
 
   useEffect(() => {
     async function fetchCareers() {
@@ -577,12 +582,26 @@ export default function StudentRegisterForm({
   };
 
   // =================================================================
-  // 4. FUNCIÓN ONSUBMIT (CON LÓGICA 'otro...')
+  // 4. FUNCIÓN ONSUBMIT (CON LÓGICA 'otro...') <--- MODIFICACIÓN AQUÍ
   // =================================================================
   async function onSubmit(data: RegisterFormValues) {
     if (isSubmitting) {
       return;
     }
+    
+    // Check de conexión antes de iniciar el proceso de envío <--- AÑADIDO
+    if (!isOnline) {
+      Swal.fire({
+          title: "¡Sin Conexión a Internet!",
+          text: "No puedes enviar el formulario mientras estés desconectado. Por favor, verifica tu conexión e intenta de nuevo.",
+          icon: "warning",
+          confirmButtonColor: "#f59e0b",
+          confirmButtonText: "Entendido",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
     setIsSubmitting(true);
     setLastError(null);
     setShowWhatsAppButton(false);
@@ -1634,12 +1653,16 @@ export default function StudentRegisterForm({
             <Button
               type="submit"
               className="w-full"
-              disabled={isSubmitting || isUnderage}
+              // Modificado: Deshabilitar si no está online <--- MODIFICADO
+              disabled={isSubmitting || isUnderage || !isOnline}
             >
               {isSubmitting && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              {isEditMode ? "Actualizar Matrícula" : "Guardar Matrícula"}
+              {/* Modificado: Mostrar mensaje de Sin Conexión <--- MODIFICADO */}
+              {!isOnline 
+                ? "Sin conexión a Internet para enviar su datos" 
+                : isEditMode ? "Actualizar Matrícula" : "Guardar Matrícula"}
               {isUnderage && " (Debe tener al menos 14 años)"}
             </Button>
             {showWhatsAppButton && (
