@@ -1,3 +1,4 @@
+// src/components/register/register-list.tsx
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -32,6 +33,8 @@ import {
   X,
   Loader2,
   FileText,
+  Printer,      // Icono para imprimir
+  CheckCircle2, // Icono para estado impreso
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -39,6 +42,7 @@ import {
   deleteEnrollment,
   getCareers,
   getUsers,
+  markAsPrinted, // Acción del servidor
 } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Register, User } from "@/lib/types";
@@ -70,10 +74,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-// --- HOOK PARA DETECTAR MÓVIL (SIN CAMBIOS) ---
+// --- HOOKS ---
+
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
-
   useEffect(() => {
     if (typeof window !== "undefined") {
       const checkDevice = () => {
@@ -88,34 +92,36 @@ function useIsMobile() {
       return () => window.removeEventListener("resize", checkDevice);
     }
   }, []);
-
   return isMobile;
 }
 
-// --- HOOK PARA DEBOUNCE (SIN CAMBIOS) ---
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedValue(value);
     }, delay);
-
     return () => {
       clearTimeout(handler);
     };
   }, [value, delay]);
-
   return debouncedValue;
 }
 
-// Define un tipo más completo para el usuario, incluyendo el rol (SIN CAMBIOS)
+// --- TIPOS ---
+
 type UserWithRole = User & {
   role?: string;
   id?: string;
 };
 
-// --- COMPONENTE MEJORADO PARA INDICADORES DE DOCUMENTOS (SIN CAMBIOS) ---
+// Extendemos el tipo para incluir isPrinted localmente si TS no lo infiere aun
+type ExtendedRegister = Register & {
+  isPrinted?: boolean;
+};
+
+// --- COMPONENTES UI AUXILIARES ---
+
 const DocumentStatus = ({ enrollment }: { enrollment: Register }) => {
   const presentDocs = [];
   if (enrollment.cedulaFileFrente) presentDocs.push("Cédula (Frente)");
@@ -216,12 +222,14 @@ const EnrollmentActions = ({
   );
 };
 
+// --- COMPONENTE PRINCIPAL ---
+
 export default function RegisterList() {
   const { user: currentUser, isLoading: isUserLoading } = useCurrentUser();
-  const [enrollments, setEnrollments] = useState<Register[]>([]);
+  const [enrollments, setEnrollments] = useState<ExtendedRegister[]>([]);
   const [pendingEnrollments, setPendingEnrollments] = useState<Register[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [enrollmentToView, setEnrollmentToView] = useState<Register | null>(
+  const [enrollmentToView, setEnrollmentToView] = useState<ExtendedRegister | null>(
     null
   );
   const { toast } = useToast();
@@ -232,23 +240,26 @@ export default function RegisterList() {
 
   const isMobile = useIsMobile();
   const [isGeneratingPdf, setIsGeneratingPdf] = useState<string | null>(null);
+  const [isMarkingPrinted, setIsMarkingPrinted] = useState(false);
 
-  // Estados para filtros
+  // --- ESTADOS DE FILTROS ---
   const [searchDate, setSearchDate] = useState("");
   const [searchUser, setSearchUser] = useState("");
   const [searchCareer, setSearchCareer] = useState("");
   const [searchName, setSearchName] = useState("");
   const [searchDocumentFilter, setSearchDocumentFilter] = useState("all");
-  // Se eliminó searchShift y sus referencias
+  const [searchPrintedFilter, setSearchPrintedFilter] = useState("all"); // NUEVO FILTRO
+
   const [careers, setCareers] = useState<Career[]>([]);
   const [users, setUsers] = useState<{ id: string; name: string | null }[]>([]);
 
-  // Debounce para búsqueda automática
+  // --- DEBOUNCES ---
   const debouncedSearchName = useDebounce(searchName, 500);
   const debouncedSearchDate = useDebounce(searchDate, 500);
   const debouncedSearchUser = useDebounce(searchUser, 500);
   const debouncedSearchCareer = useDebounce(searchCareer, 500);
   const debouncedSearchDocumentFilter = useDebounce(searchDocumentFilter, 500);
+  const debouncedSearchPrintedFilter = useDebounce(searchPrintedFilter, 500); // DEBOUNCE NUEVO
 
   const loadAllData = useCallback(
     async (
@@ -259,6 +270,7 @@ export default function RegisterList() {
         career?: string;
         name?: string;
         documentFilter?: string;
+        printedFilter?: string; // NUEVO PARAMETRO
       } = {}
     ) => {
       setIsLoading(true);
@@ -267,7 +279,7 @@ export default function RegisterList() {
         user:
           filters.user === "all" || !filters.user
             ? undefined
-            : filters.user === "PUBLIC_USER" // Lógica para el filtro Público
+            : filters.user === "PUBLIC_USER"
             ? "PUBLIC_USER"
             : filters.user,
         career:
@@ -276,6 +288,7 @@ export default function RegisterList() {
             : filters.career,
         name: filters.name || undefined,
         documentFilter: filters.documentFilter === "all" ? undefined : filters.documentFilter,
+        printedFilter: filters.printedFilter === "all" ? undefined : filters.printedFilter, // AÑADIDO AL REQUEST
       };
       try {
         const [serverData, localData, careersData, usersData] =
@@ -285,7 +298,7 @@ export default function RegisterList() {
             getCareers(),
             getUsers(),
           ]);
-        setEnrollments(serverData.enrollments as Register[]);
+        setEnrollments(serverData.enrollments as ExtendedRegister[]);
         setTotalEnrollments(serverData.total);
         setPendingEnrollments(localData);
         setCareers(careersData);
@@ -307,7 +320,7 @@ export default function RegisterList() {
     setIsClient(true);
   }, []);
 
-  // Efecto para búsqueda automática con debounce
+  // Efecto principal de carga
   useEffect(() => {
     if (isClient) {
       loadAllData(currentPage, {
@@ -316,6 +329,7 @@ export default function RegisterList() {
         career: debouncedSearchCareer,
         name: debouncedSearchName,
         documentFilter: debouncedSearchDocumentFilter,
+        printedFilter: debouncedSearchPrintedFilter, // DEPENDENCIA AÑADIDA
       });
     }
   }, [
@@ -326,9 +340,11 @@ export default function RegisterList() {
     debouncedSearchCareer,
     debouncedSearchName,
     debouncedSearchDocumentFilter,
+    debouncedSearchPrintedFilter, // DEPENDENCIA AÑADIDA
     loadAllData,
   ]);
 
+  // Efecto para actualización storage
   useEffect(() => {
     const handleStorageChange = () =>
       loadAllData(currentPage, {
@@ -337,11 +353,14 @@ export default function RegisterList() {
         career: searchCareer,
         name: searchName,
         documentFilter: searchDocumentFilter,
+        printedFilter: searchPrintedFilter, // PARAMETRO AÑADIDO
       });
     window.addEventListener("storageUpdated", handleStorageChange);
     return () =>
       window.removeEventListener("storageUpdated", handleStorageChange);
-  }, [loadAllData, currentPage, searchDate, searchUser, searchCareer, searchName, searchDocumentFilter]);
+  }, [loadAllData, currentPage, searchDate, searchUser, searchCareer, searchName, searchDocumentFilter, searchPrintedFilter]);
+
+  // --- MANEJADORES ---
 
   const handleView = async (enrollment: Register) => {
     if (isMobile) {
@@ -368,6 +387,48 @@ export default function RegisterList() {
     }
   };
 
+  const handlePrintMark = async () => {
+    if (!enrollmentToView) return;
+    
+    setIsMarkingPrinted(true);
+    
+    try {
+      // 1. Generar PDF
+      const blob = await pdf(<EnrollmentPDF enrollment={enrollmentToView} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      
+      // 2. Abrir PDF
+      window.open(url, "_blank");
+
+      // 3. Marcar como impreso en DB
+      await markAsPrinted(enrollmentToView.id);
+
+      // 4. Actualizar UI
+      setEnrollments((prev) => 
+        prev.map((e) => e.id === enrollmentToView.id ? { ...e, isPrinted: true } : e)
+      );
+      setEnrollmentToView((prev) => prev ? { ...prev, isPrinted: true } : null);
+      
+      toast({
+        title: "Estado actualizado",
+        description: "El registro se ha marcado como impreso.",
+        className: "bg-green-50 border-green-200 text-green-800"
+      });
+
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      
+    } catch (error) {
+      console.error("Error al imprimir:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo actualizar el estado de impresión.",
+      });
+    } finally {
+      setIsMarkingPrinted(false);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     const result = await Swal.fire({
       title: "¿Está seguro?",
@@ -388,6 +449,7 @@ export default function RegisterList() {
         career: searchCareer,
         name: searchName,
         documentFilter: searchDocumentFilter,
+        printedFilter: searchPrintedFilter,
       });
       Swal.fire({
         title: "¡Eliminado!",
@@ -411,6 +473,7 @@ export default function RegisterList() {
     setSearchCareer("");
     setSearchName("");
     setSearchDocumentFilter("all");
+    setSearchPrintedFilter("all"); // LIMPIAR NUEVO FILTRO
     if (currentPage !== 1) {
       setCurrentPage(1);
     } else {
@@ -466,7 +529,7 @@ export default function RegisterList() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            
+            {/* FILTRO FECHA */}
             <Input
               type="date"
               placeholder="Fecha de registro"
@@ -474,12 +537,26 @@ export default function RegisterList() {
               onChange={(e) => setSearchDate(e.target.value)}
             />
             
+            {/* FILTRO NOMBRE */}
             <Input
               placeholder="Buscar por nombre o apellido"
               value={searchName}
               onChange={(e) => setSearchName(e.target.value)}
             />
+
+            {/* --- NUEVO FILTRO DE ESTADO DE IMPRESIÓN --- */}
+            <Select value={searchPrintedFilter} onValueChange={setSearchPrintedFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Estado de Impresión" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los estados Impresos</SelectItem>
+                <SelectItem value="not-printed">Sin Imprimir</SelectItem>
+                <SelectItem value="printed">Impresos</SelectItem>
+              </SelectContent>
+            </Select>
             
+            {/* FILTRO USUARIO */}
             <Select value={searchUser} onValueChange={setSearchUser}>
               <SelectTrigger>
                 <SelectValue placeholder="Filtrar por usuario" />
@@ -497,6 +574,7 @@ export default function RegisterList() {
               </SelectContent>
             </Select>
             
+            {/* FILTRO CARRERA */}
             <Select value={searchCareer} onValueChange={setSearchCareer}>
               <SelectTrigger>
                 <SelectValue placeholder="Filtrar por carrera" />
@@ -524,6 +602,7 @@ export default function RegisterList() {
               </SelectContent>
             </Select>
 
+            {/* FILTRO DOCUMENTOS */}
             <Select value={searchDocumentFilter} onValueChange={setSearchDocumentFilter}>
               <SelectTrigger>
                 <SelectValue placeholder="Filtrar por documentos" />
@@ -536,7 +615,7 @@ export default function RegisterList() {
               </SelectContent>
             </Select>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 lg:col-span-2">
               <Button
                 onClick={clearFilters}
                 variant="outline"
@@ -549,6 +628,7 @@ export default function RegisterList() {
         </CardContent>
       </Card>
 
+      {/* TABLA ESCRITORIO */}
       <div className="hidden md:block">
         <Card>
           <CardHeader>
@@ -565,25 +645,37 @@ export default function RegisterList() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    {/* CORRECCIÓN HIDRATACIÓN: Contenido de TR en una línea */}
-                    <TableHead>Estudiante</TableHead><TableHead>Carrera</TableHead><TableHead>Turno</TableHead><TableHead>Fecha de Registro</TableHead><TableHead>Registrado por</TableHead><TableHead className="w-48">Documentos</TableHead><TableHead>Estado</TableHead><TableHead className="text-right">Acciones</TableHead>
+                    <TableHead>Estudiante</TableHead>
+                    <TableHead>Carrera</TableHead>
+                    <TableHead>Turno</TableHead>
+                    <TableHead>Fecha de Registro</TableHead>
+                    <TableHead>Registrado por</TableHead>
+                    <TableHead className="w-48">Documentos</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead className="text-center">Impresión</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {allEnrollments.map((enrollment) => (
                     <TableRow key={enrollment.id}>
-                      {/* CORRECCIÓN HIDRATACIÓN: Contenido de TR en una línea */}
                       <TableCell className="font-medium">
                         {enrollment.nombres} {enrollment.apellidos}
-                      </TableCell><TableCell>{enrollment.carreraTecnica}</TableCell><TableCell>
+                      </TableCell>
+                      <TableCell>{enrollment.carreraTecnica}</TableCell>
+                      <TableCell>
                         {enrollment.career?.shift || "N/A"}
-                      </TableCell><TableCell>
+                      </TableCell>
+                      <TableCell>
                         {new Date(enrollment.createdAt).toLocaleDateString()}
-                      </TableCell><TableCell>
+                      </TableCell>
+                      <TableCell>
                         {enrollment.user?.name || "Público"}
-                      </TableCell><TableCell>
+                      </TableCell>
+                      <TableCell>
                         <DocumentStatus enrollment={enrollment} />
-                      </TableCell><TableCell>
+                      </TableCell>
+                      <TableCell>
                         {pendingEnrollments.some(
                           (p) => p.id === enrollment.id
                         ) ? (
@@ -601,7 +693,20 @@ export default function RegisterList() {
                             Completado
                           </Badge>
                         )}
-                      </TableCell><TableCell className="text-right">
+                      </TableCell>
+                      
+                      {/* NUEVA COLUMNA ESTADO DE IMPRESIÓN */}
+                      <TableCell className="text-center">
+                        {(enrollment as ExtendedRegister).isPrinted ? (
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1 w-fit mx-auto">
+                            <CheckCircle2 className="h-3 w-3" /> Impreso
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">-</span>
+                        )}
+                      </TableCell>
+
+                      <TableCell className="text-right">
                         <EnrollmentActions
                           enrollment={enrollment}
                           onDelete={handleDelete}
@@ -636,6 +741,7 @@ export default function RegisterList() {
         </Card>
       </div>
 
+      {/* LISTA MÓVIL */}
       <div className="md:hidden space-y-4">
         <h2 className="text-xl font-bold">
           Matrículas Registradas ({totalEnrollments})
@@ -694,7 +800,9 @@ export default function RegisterList() {
                 </div>
                 <div className="flex justify-between items-center pt-2">
                   <span className="text-muted-foreground">Estado:</span>
-                  {pendingEnrollments.some((p) => p.id === enrollment.id) ? (
+                  {pendingEnrollments.some(
+                    (p) => p.id === enrollment.id
+                  ) ? (
                     <Badge
                       variant="outline"
                       className="bg-yellow-100 text-yellow-800 border-yellow-300"
@@ -709,6 +817,15 @@ export default function RegisterList() {
                       Completado
                     </Badge>
                   )}
+                </div>
+                {/* NUEVO INDICADOR MÓVIL */}
+                <div className="flex justify-between items-center pt-2">
+                    <span className="text-muted-foreground">Impresión:</span>
+                    {(enrollment as ExtendedRegister).isPrinted ? (
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Impreso</Badge>
+                    ) : (
+                        <span>No</span>
+                    )}
                 </div>
               </CardContent>
             </Card>
@@ -733,6 +850,7 @@ export default function RegisterList() {
         </div>
       </div>
 
+      {/* MODAL DE VISUALIZACIÓN */}
       <Dialog
         open={!!enrollmentToView}
         onOpenChange={(open) => !open && setEnrollmentToView(null)}
@@ -745,32 +863,50 @@ export default function RegisterList() {
               {enrollmentToView?.nombres}.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex-1 overflow-auto border rounded-md my-4">
+          <div className="flex-1 overflow-auto border rounded-md my-4 bg-gray-100">
             {isClient && enrollmentToView && (
-              <PDFViewer style={{ width: "100%", height: "100%" }}>
+              <PDFViewer style={{ width: "100%", height: "100%" }} showToolbar={false}>
                 <EnrollmentPDF enrollment={enrollmentToView} />
               </PDFViewer>
             )}
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button
               variant="outline"
               onClick={() => setEnrollmentToView(null)}
             >
               Cerrar
             </Button>
+
+            {/* BOTÓN SOLO DESCARGAR */}
             {isClient && enrollmentToView && (
               <PDFDownloadLink
                 document={<EnrollmentPDF enrollment={enrollmentToView} />}
                 fileName={`Matricula-${enrollmentToView.nombres}-${enrollmentToView.apellidos}.pdf`}
               >
                 {({ loading }) => (
-                  <Button disabled={loading}>
+                  <Button variant="secondary" disabled={loading}>
                     <Download className="mr-2 h-4 w-4" />
-                    {loading ? "Generando..." : "Descargar PDF"}
+                    {loading ? "Generando..." : "Solo Descargar"}
                   </Button>
                 )}
               </PDFDownloadLink>
+            )}
+
+            {/* BOTÓN IMPRIMIR Y MARCAR */}
+            {isClient && enrollmentToView && (
+                <Button 
+                    onClick={handlePrintMark} 
+                    disabled={isMarkingPrinted}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                    {isMarkingPrinted ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                        <Printer className="mr-2 h-4 w-4" />
+                    )}
+                    {enrollmentToView.isPrinted ? "Re-Imprimir" : "Imprimir y Marcar"}
+                </Button>
             )}
           </DialogFooter>
         </DialogContent>

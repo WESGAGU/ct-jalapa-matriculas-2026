@@ -53,6 +53,9 @@ model Register {
   gradesCertificateFile String? // Nuevo campo para certificado de notas
   firmaProtagonista    String?
 
+  //Nuevo campo estado de impresion
+  isPrinted            Boolean  @default(false)
+
   // Relación con docente (User) - Es opcional para registros públicos
   userId String?
   user   User?   @relation(fields: [userId], references: [id])

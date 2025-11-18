@@ -47,6 +47,24 @@ async function uploadImage(dataUri: string | undefined | null): Promise<{ url: s
   }
 }
 
+// --- NUEVA FUNCIÓN PARA MARCAR COMO IMPRESO ---
+export async function markAsPrinted(id: string) {
+  try {
+    await prisma.register.update({
+      where: { id },
+      data: { isPrinted: true },
+    });
+    // Revalidamos las rutas donde se muestra la lista para refrescar los datos
+    revalidatePath('/register');
+    revalidatePath('/');
+    return { success: true };
+  } catch (error) {
+    console.error("Error marking as printed:", error);
+    return { success: false, error: "Error al actualizar estado de impresión" };
+  }
+}
+// ---------------------------------------------
+
 export async function addEnrollment(enrollment: Register, userId?: string) {
   await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -218,6 +236,7 @@ export async function getEnrollments(
     career?: string;
     name?: string;
     documentFilter?: string;
+    printedFilter?: string; // <--- NUEVO PARÁMETRO
   } = {}
 ) {
   await new Promise((resolve) => setTimeout(resolve, 500));
@@ -305,6 +324,16 @@ export async function getEnrollments(
       ];
     }
   }
+
+  // --- FILTRO DE ESTADO DE IMPRESIÓN ---
+  if (filters.printedFilter) {
+    if (filters.printedFilter === 'printed') {
+      where.isPrinted = true;
+    } else if (filters.printedFilter === 'not-printed') {
+      where.isPrinted = false;
+    }
+  }
+  // -------------------------------------
 
   const [enrollments, total] = await Promise.all([
     prisma.register.findMany({
