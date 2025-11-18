@@ -46,7 +46,8 @@ import {
 } from "@/lib/actions";
 import { savePendingEnrollment, updatePendingEnrollment } from "@/lib/storage";
 import { useState, useRef, useEffect, useMemo } from "react";
-import { CalendarIcon, Loader2, RefreshCw } from "lucide-react";
+// --- 1. IMPORTAR ICONO X ---
+import { CalendarIcon, Loader2, RefreshCw, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, isBefore, subYears } from "date-fns";
 import { es } from "date-fns/locale";
@@ -104,7 +105,9 @@ type UserWithRole = Pick<User, 'id' | 'name'> & { role?: Role };
 type UserListItem = { id: string; name: string | null };
 
 
-// Zod Schema para el formulario de matrícula
+// =================================================================
+// 2. SCHEMA ZOD ACTUALIZADO
+// =================================================================
 const formSchema = z
   .object({
     // Section I
@@ -118,11 +121,21 @@ const formSchema = z
     }),
     estadoCivil: z.string().min(1, "El estado civil es obligatorio."),
     cedula: z.string().optional(),
+    
     municipioNacimiento: z
       .string()
       .min(1, "El municipio de nacimiento es obligatorio."),
+    // Campo auxiliar
+    otroMunicipioNacimiento: z.string().optional(),
+
     deptoDomiciliar: z.string().min(1, "El departamento es obligatorio."),
+    // Campo auxiliar
+    otroDeptoDomiciliar: z.string().optional(),
+
     municipioDomiciliar: z.string().min(1, "El municipio es obligatorio."),
+    // Campo auxiliar
+    otroMunicipioDomiciliar: z.string().optional(),
+
     comunidad: z.string().min(1, "La comunidad es obligatoria."),
     direccion: z.string().min(1, "La dirección es obligatoria."),
     numPersonasHogar: z.coerce
@@ -167,10 +180,34 @@ const formSchema = z
     firmaProtagonista: z.string().optional(),
 
     // NUEVOS CAMPOS EDITABLES POR ADMIN
-    createdAt: z.date().optional(), // Fecha de registro (solo visible para admin)
-    userId: z.string().optional().nullable(), // Usuario asignado (solo visible para admin)
+    createdAt: z.date().optional(), 
+    userId: z.string().optional().nullable(), 
   })
   .superRefine((data, ctx) => {
+    // --- LÓGICA VALIDACIÓN "OTRO" ---
+    if (data.municipioNacimiento === "Otro" && !data.otroMunicipioNacimiento) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["otroMunicipioNacimiento"],
+        message: "Debe especificar el municipio de nacimiento.",
+      });
+    }
+    if (data.deptoDomiciliar === "Otro" && !data.otroDeptoDomiciliar) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["otroDeptoDomiciliar"],
+        message: "Debe especificar el departamento domiciliar.",
+      });
+    }
+    if (data.municipioDomiciliar === "Otro" && !data.otroMunicipioDomiciliar) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["otroMunicipioDomiciliar"],
+        message: "Debe especificar el municipio domiciliar.",
+      });
+    }
+    // --------------------------------
+
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const isEditMode = "id" in data && !!(data as { id?: string }).id;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -200,7 +237,7 @@ type RegisterFormValues = z.infer<typeof formSchema>;
 interface RegisterFormProps {
   enrollment?: Register | PrismaRegister;
   user?: UserWithRole;
-  allUsers?: UserListItem[]; // <-- NUEVO: Recibir lista de usuarios
+  allUsers?: UserListItem[]; 
 }
 
 export default function RegisterForm({ enrollment, user, allUsers = [] }: RegisterFormProps) {
@@ -213,7 +250,7 @@ export default function RegisterForm({ enrollment, user, allUsers = [] }: Regist
   const [isUnderage, setIsUnderage] = useState(false);
   const [hasBirthDate, setHasBirthDate] = useState(false);
 
-  const isAdmin = user?.role === 'ADMIN'; // NUEVO: Determinar si es Admin
+  const isAdmin = user?.role === 'ADMIN'; 
 
   useEffect(() => {
     async function fetchCareers() {
@@ -227,6 +264,9 @@ export default function RegisterForm({ enrollment, user, allUsers = [] }: Regist
   const isEditMode = !!enrollment;
   const signatureColor = "black";
 
+  // =================================================================
+  // 3. VALORES POR DEFECTO
+  // =================================================================
   const emptyDefaults: Partial<RegisterFormValues> = useMemo(() => ({
     nombres: "",
     apellidos: "",
@@ -235,8 +275,11 @@ export default function RegisterForm({ enrollment, user, allUsers = [] }: Regist
     estadoCivil: "",
     cedula: "",
     municipioNacimiento: municipios[0] || "",
+    otroMunicipioNacimiento: "", // Iniciar vacío
     deptoDomiciliar: "Nueva Segovia",
+    otroDeptoDomiciliar: "", // Iniciar vacío
     municipioDomiciliar: municipios[0] || "",
+    otroMunicipioDomiciliar: "", // Iniciar vacío
     comunidad: "",
     direccion: "",
     numPersonasHogar: 1,
@@ -256,7 +299,6 @@ export default function RegisterForm({ enrollment, user, allUsers = [] }: Regist
     diplomaFile: undefined,
     gradesCertificateFile: undefined,
     firmaProtagonista: undefined,
-    // Inicializar campos de Admin
     createdAt: undefined, 
     userId: null,
   }), []);
@@ -269,16 +311,29 @@ export default function RegisterForm({ enrollment, user, allUsers = [] }: Regist
         ? new Date(enrollment.birthDate)
         : (enrollment.birthDate as Date);
 
-    // NUEVO: Obtener la fecha de creación para el formulario
     const createdAtDate = enrollment.createdAt
       ? new Date(enrollment.createdAt)
       : new Date();
-
 
     if (date) {
       setIsUnderage(!isAtLeast14YearsOld(date));
       setHasBirthDate(true);
     }
+
+    // --- LÓGICA PARA DETECTAR "OTRO" EN EDICIÓN ---
+    const deptoDomiciliarOptions = ["Nueva Segovia", "Otro"];
+
+    const isOtroMunicipioNac =
+      enrollment.municipioNacimiento &&
+      !municipios.includes(enrollment.municipioNacimiento);
+
+    const isOtroDeptoDom =
+      enrollment.deptoDomiciliar &&
+      !deptoDomiciliarOptions.includes(enrollment.deptoDomiciliar);
+
+    const isOtroMunicipioDom =
+      enrollment.municipioDomiciliar &&
+      !municipios.includes(enrollment.municipioDomiciliar);
 
     return {
       ...emptyDefaults,
@@ -288,9 +343,27 @@ export default function RegisterForm({ enrollment, user, allUsers = [] }: Regist
       gender: (enrollment.gender as "masculino" | "femenino") ?? "masculino",
       estadoCivil: enrollment.estadoCivil ?? "",
       cedula: enrollment.cedula ?? "",
-      municipioNacimiento: enrollment.municipioNacimiento ?? municipios[0],
-      deptoDomiciliar: enrollment.deptoDomiciliar ?? "Nueva Segovia",
-      municipioDomiciliar: enrollment.municipioDomiciliar ?? municipios[0],
+      
+      // Asignación condicional
+      municipioNacimiento: isOtroMunicipioNac
+        ? "Otro"
+        : enrollment.municipioNacimiento ?? municipios[0],
+      otroMunicipioNacimiento: isOtroMunicipioNac
+        ? enrollment.municipioNacimiento
+        : "",
+      
+      deptoDomiciliar: isOtroDeptoDom
+        ? "Otro"
+        : enrollment.deptoDomiciliar ?? "Nueva Segovia",
+      otroDeptoDomiciliar: isOtroDeptoDom ? enrollment.deptoDomiciliar : "",
+
+      municipioDomiciliar: isOtroMunicipioDom
+        ? "Otro"
+        : enrollment.municipioDomiciliar ?? municipios[0],
+      otroMunicipioDomiciliar: isOtroMunicipioDom
+        ? enrollment.municipioDomiciliar
+        : "",
+
       comunidad: enrollment.comunidad ?? "",
       direccion: enrollment.direccion ?? "",
       numPersonasHogar: enrollment.numPersonasHogar ?? 1,
@@ -310,7 +383,6 @@ export default function RegisterForm({ enrollment, user, allUsers = [] }: Regist
       hasCedula:
         enrollment.cedulaFileFrente || enrollment.cedula ? "si" : "no",
       finishedBachillerato: enrollment.diplomaFile ? "si" : "no",
-      // NUEVO: Inicializar campos de Admin
       createdAt: createdAtDate,
       userId: (enrollment as PrismaRegister).userId ?? null,
     };
@@ -405,12 +477,35 @@ export default function RegisterForm({ enrollment, user, allUsers = [] }: Regist
     });
   };
 
+  // =================================================================
+  // 4. ONSUBMIT ACTUALIZADO
+  // =================================================================
   async function onSubmit(data: RegisterFormValues) {
     setIsSubmitting(true);
     form.clearErrors(["cedula", "email", "carreraTecnica"]);
 
-    // MODIFICADO: Desestructurar nuevos campos
-    const { hasCedula, finishedBachillerato, createdAt, userId, ...rest } = data; 
+    // --- REEMPLAZO DE VALORES "OTRO" ---
+    if (data.municipioNacimiento === "Otro") {
+      data.municipioNacimiento = data.otroMunicipioNacimiento || "";
+    }
+    if (data.deptoDomiciliar === "Otro") {
+      data.deptoDomiciliar = data.otroDeptoDomiciliar || "";
+    }
+    if (data.municipioDomiciliar === "Otro") {
+      data.municipioDomiciliar = data.otroMunicipioDomiciliar || "";
+    }
+
+    // Extraemos los campos auxiliares para que no pasen a 'rest'
+    const { 
+      hasCedula, 
+      finishedBachillerato, 
+      createdAt, 
+      userId, 
+      otroMunicipioNacimiento,
+      otroDeptoDomiciliar,
+      otroMunicipioDomiciliar,
+      ...rest 
+    } = data; 
 
     const [cedulaFrente, cedulaReverso, diploma, birthCertificate, gradesCertificate] = await Promise.all([
       rest.cedulaFileFrente instanceof File ? fileToDataUri(rest.cedulaFileFrente) : (enrollment as Register)?.cedulaFileFrente,
@@ -422,12 +517,11 @@ export default function RegisterForm({ enrollment, user, allUsers = [] }: Regist
 
     const enrollmentData: Register = {
       id: isEditMode && enrollment ? enrollment.id : crypto.randomUUID(),
-      ...rest,
+      ...rest, // Aquí ya van los valores corregidos
       birthDate: rest.birthDate as Date,
       cedula: typeof rest.cedula === "string" ? (rest.cedula.trim() || undefined) : undefined,
       email: typeof rest.email === "string" ? (rest.email.trim() || undefined) : undefined,
       numPersonasHogar: Number(rest.numPersonasHogar),
-      // MODIFICADO: Usar el valor del formulario para createdAt si es edición/admin
       createdAt: isEditMode && isAdmin && createdAt ? new Date(createdAt) : (enrollment?.createdAt ? new Date(enrollment.createdAt) : new Date()),
       updatedAt: new Date(),
       cedulaFileFrente: hasCedula === "si" ? cedulaFrente : undefined,
@@ -436,7 +530,6 @@ export default function RegisterForm({ enrollment, user, allUsers = [] }: Regist
       diplomaFile: finishedBachillerato === "si" ? diploma : undefined,
       gradesCertificateFile: finishedBachillerato === "no" ? gradesCertificate : undefined,
       firmaProtagonista: sigCanvas.current?.isEmpty() ? (enrollment as Register)?.firmaProtagonista : sigCanvas.current?.toDataURL("image/png"),
-      // MODIFICADO: Usar el valor del formulario para userId si es edición/admin
       userId: isEditMode && isAdmin ? (userId || null) : user?.id || null, 
       user: enrollment ? (enrollment as Register).user : { name: user?.name || null },
     };
@@ -453,10 +546,8 @@ export default function RegisterForm({ enrollment, user, allUsers = [] }: Regist
     try {
       if (isOnline) {
         if (isEditMode && enrollment) {
-          // Crear un objeto con solo los campos permitidos para la actualización
           const updateFields: Partial<Register> = {
             ...enrollmentData,
-            // Sobreescribir con los valores de admin si es admin
             ...(isAdmin && {
                 createdAt: enrollmentData.createdAt,
                 userId: enrollmentData.userId, 
@@ -482,7 +573,6 @@ export default function RegisterForm({ enrollment, user, allUsers = [] }: Regist
         confirmButtonColor: '#3085d6',
         confirmButtonText: 'Entendido'
       }).then(() => {
-        // Redirigir a la lista de registros
         router.push('/register');
         router.refresh();
       });
@@ -525,13 +615,15 @@ export default function RegisterForm({ enrollment, user, allUsers = [] }: Regist
     return acc;
   }, {} as Record<string, Career[]>);
 
+  // =================================================================
+  // 5. JSX ACTUALIZADO (UI DINÁMICA)
+  // =================================================================
   return (
     <>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-4">
           <Accordion
             type="multiple"
-            // Abre por defecto los paneles relevantes en modo edición/admin
             defaultValue={["item-1", "item-2", "item-3", "item-4", isEditMode && isAdmin ? "admin-tools" : ""].filter(Boolean) as string[]} 
             className="w-full"
           >
@@ -666,75 +758,189 @@ export default function RegisterForm({ enrollment, user, allUsers = [] }: Regist
                 </div>
 
                 <div className={formGridClass}>
+                  {/* 1. MUNICIPIO NACIMIENTO REEMPLAZABLE */}
                   <FormField
                     control={form.control}
                     name="municipioNacimiento"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Municipio de Nacimiento</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Seleccione un municipio" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {municipios.map((m) => (
-                              <SelectItem key={m} value={m}>
-                                {m}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
+                        {watch("municipioNacimiento") === "Otro" ? (
+                          <FormField
+                            control={form.control}
+                            name="otroMunicipioNacimiento"
+                            render={({ field: otroField }) => (
+                              <>
+                                <div className="flex items-center space-x-2">
+                                  <FormControl>
+                                    <Input
+                                      placeholder="Escriba el municipio"
+                                      {...otroField}
+                                      onChange={(e) =>
+                                        otroField.onChange(capitalizeWords(e.target.value))
+                                      }
+                                    />
+                                  </FormControl>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => {
+                                      setValue("municipioNacimiento", municipios[0] || "");
+                                      setValue("otroMunicipioNacimiento", "");
+                                    }}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                                <FormMessage />
+                              </>
+                            )}
+                          />
+                        ) : (
+                          <>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Seleccione un municipio" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {municipios.map((m) => (
+                                  <SelectItem key={m} value={m}>
+                                    {m}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </>
+                        )}
                       </FormItem>
                     )}
                   />
+
+                  {/* 2. DEPARTAMENTO DOMICILIAR REEMPLAZABLE */}
                   <FormField
                     control={form.control}
                     name="deptoDomiciliar"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Departamento Domiciliar</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Seleccione un departamento" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="Nueva Segovia">Nueva Segovia</SelectItem>
-                            <SelectItem value="Otro">Otro</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
+                        {watch("deptoDomiciliar") === "Otro" ? (
+                          <FormField
+                            control={form.control}
+                            name="otroDeptoDomiciliar"
+                            render={({ field: otroField }) => (
+                              <>
+                                <div className="flex items-center space-x-2">
+                                  <FormControl>
+                                    <Input
+                                      placeholder="Escriba el departamento"
+                                      {...otroField}
+                                      onChange={(e) =>
+                                        otroField.onChange(capitalizeWords(e.target.value))
+                                      }
+                                    />
+                                  </FormControl>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => {
+                                      setValue("deptoDomiciliar", "Nueva Segovia");
+                                      setValue("otroDeptoDomiciliar", "");
+                                    }}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                                <FormMessage />
+                              </>
+                            )}
+                          />
+                        ) : (
+                          <>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Seleccione un departamento" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="Nueva Segovia">Nueva Segovia</SelectItem>
+                                <SelectItem value="Otro">Otro</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </>
+                        )}
                       </FormItem>
                     )}
                   />
+
+                  {/* 3. MUNICIPIO DOMICILIAR REEMPLAZABLE */}
                   <FormField
                     control={form.control}
                     name="municipioDomiciliar"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Municipio Domiciliar</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Seleccione un municipio" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {municipios.map((m) => (
-                              <SelectItem key={m} value={m}>
-                                {m}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
+                        {watch("municipioDomiciliar") === "Otro" ? (
+                          <FormField
+                            control={form.control}
+                            name="otroMunicipioDomiciliar"
+                            render={({ field: otroField }) => (
+                              <>
+                                <div className="flex items-center space-x-2">
+                                  <FormControl>
+                                    <Input
+                                      placeholder="Escriba el municipio"
+                                      {...otroField}
+                                      onChange={(e) =>
+                                        otroField.onChange(capitalizeWords(e.target.value))
+                                      }
+                                    />
+                                  </FormControl>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => {
+                                      setValue("municipioDomiciliar", municipios[0] || "");
+                                      setValue("otroMunicipioDomiciliar", "");
+                                    }}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                                <FormMessage />
+                              </>
+                            )}
+                          />
+                        ) : (
+                          <>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Seleccione un municipio" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {municipios.map((m) => (
+                                  <SelectItem key={m} value={m}>
+                                    {m}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </>
+                        )}
                       </FormItem>
                     )}
                   />
+
                   <FormField
                     control={form.control}
                     name="comunidad"
@@ -831,6 +1037,7 @@ export default function RegisterForm({ enrollment, user, allUsers = [] }: Regist
               </AccordionContent>
             </AccordionItem>
 
+            {/* RESTO DE ITEMS (2, 3, 4 y ADMIN) SE MANTIENEN IGUALES QUE TU VERSIÓN ORIGINAL PERO ESTÁN AQUÍ COMPLETOS */}
             <AccordionItem value="item-2">
               <AccordionTrigger className="font-bold text-lg">
                 <span className="text-left">
@@ -1115,7 +1322,7 @@ export default function RegisterForm({ enrollment, user, allUsers = [] }: Regist
               </AccordionContent>
             </AccordionItem>
 
-            {/* NUEVO: ACORDEÓN DE HERRAMIENTAS DE ADMINISTRADOR (Solo en edición y si es Admin) */}
+            {/* ACORDEÓN DE HERRAMIENTAS DE ADMINISTRADOR */}
             {isEditMode && isAdmin && (
                 <AccordionItem value="admin-tools">
                     <AccordionTrigger className="font-bold text-lg text-amber-600 dark:text-amber-400">V. Herramientas de Administración</AccordionTrigger>
@@ -1189,7 +1396,6 @@ export default function RegisterForm({ enrollment, user, allUsers = [] }: Regist
                     </AccordionContent>
                 </AccordionItem>
             )}
-            {/* FIN NUEVO: ACORDEÓN DE HERRAMIENTAS DE ADMINISTRADOR */}
           </Accordion>
 
           <p className="text-sm text-muted-foreground">La fecha de registro se guardará automáticamente.</p>

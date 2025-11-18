@@ -43,7 +43,8 @@ import {
   getCareers,
 } from "@/lib/actions";
 import { useState, useRef, useEffect, useMemo } from "react";
-import { CalendarIcon, Loader2, RefreshCw } from "lucide-react";
+// --- ICONO 'X' AÑADIDO ---
+import { CalendarIcon, Loader2, RefreshCw, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, isBefore, subYears } from "date-fns";
 import { es } from "date-fns/locale";
@@ -51,9 +52,14 @@ import type SignatureCanvas from "react-signature-canvas";
 import { ImageDropzone } from "../ui/image-dropzone";
 import dynamic from "next/dynamic";
 import { Career, Register as PrismaRegister } from "@prisma/client";
-import { FaRegAddressCard, FaRegCreditCard, FaFileAlt, FaWhatsapp } from "react-icons/fa";
+import {
+  FaRegAddressCard,
+  FaRegCreditCard,
+  FaFileAlt,
+  FaWhatsapp,
+} from "react-icons/fa";
 import { FcDiploma1 } from "react-icons/fc";
-import Swal from 'sweetalert2';
+import Swal from "sweetalert2";
 
 const SignaturePad = dynamic(() => import("react-signature-canvas"), {
   ssr: false,
@@ -83,19 +89,17 @@ const municipios = [
   "Otro",
 ];
 
-const estadosCiviles = [
-  "Soltero/a",
-  "Casado/a",
-  "Divorciado/a",
-];
+const estadosCiviles = ["Soltero/a", "Casado/a", "Divorciado/a"];
 
-// Función para calcular si la persona tiene al menos 14 años
 const isAtLeast14YearsOld = (birthDate: Date): boolean => {
   const today = new Date();
   const minDate = subYears(today, 14);
   return isBefore(birthDate, minDate);
 };
 
+// =================================================================
+// 1. ESQUEMA ZOD (CON CAMPOS 'otro...')
+// =================================================================
 const formSchema = z
   .object({
     // Section I
@@ -112,8 +116,11 @@ const formSchema = z
     municipioNacimiento: z
       .string()
       .min(1, "El municipio de nacimiento es obligatorio."),
+    otroMunicipioNacimiento: z.string().optional(),
     deptoDomiciliar: z.string().min(1, "El departamento es obligatorio."),
+    otroDeptoDomiciliar: z.string().optional(),
     municipioDomiciliar: z.string().min(1, "El municipio es obligatorio."),
+    otroMunicipioDomiciliar: z.string().optional(),
     comunidad: z.string().min(1, "La comunidad es obligatoria."),
     direccion: z.string().min(1, "La dirección es obligatoria."),
     numPersonasHogar: z.coerce
@@ -147,19 +154,50 @@ const formSchema = z
     finishedBachillerato: z.enum(["si", "no"]).default("si"),
 
     // Documents
-    cedulaFileFrente: z.union([z.instanceof(File), z.string(), z.null()]).optional(),
-    cedulaFileReverso: z.union([z.instanceof(File), z.string(), z.null()]).optional(),
+    cedulaFileFrente: z
+      .union([z.instanceof(File), z.string(), z.null()])
+      .optional(),
+    cedulaFileReverso: z
+      .union([z.instanceof(File), z.string(), z.null()])
+      .optional(),
     diplomaFile: z.union([z.instanceof(File), z.string(), z.null()]).optional(),
-    birthCertificateFile: z.union([z.instanceof(File), z.string(), z.null()]).optional(),
-    gradesCertificateFile: z.union([z.instanceof(File), z.string(), z.null()]).optional(),
+    birthCertificateFile: z
+      .union([z.instanceof(File), z.string(), z.null()])
+      .optional(),
+    gradesCertificateFile: z
+      .union([z.instanceof(File), z.string(), z.null()])
+      .optional(),
 
     // Signature
     firmaProtagonista: z.string().optional(),
   })
   .superRefine((data, ctx) => {
+    // --- LÓGICA "OTRO" ---
+    if (data.municipioNacimiento === "Otro" && !data.otroMunicipioNacimiento) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["otroMunicipioNacimiento"],
+        message: "Debe especificar el municipio de nacimiento.",
+      });
+    }
+    if (data.deptoDomiciliar === "Otro" && !data.otroDeptoDomiciliar) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["otroDeptoDomiciliar"],
+        message: "Debe especificar el departamento domiciliar.",
+      });
+    }
+    if (data.municipioDomiciliar === "Otro" && !data.otroMunicipioDomiciliar) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["otroMunicipioDomiciliar"],
+        message: "Debe especificar el municipio domiciliar.",
+      });
+    }
+
+    // --- LÓGICA EXISTENTE ---
     const isEditMode = "id" in data && !!(data as { id?: string }).id;
     const hasCedula = data.hasCedula === "si";
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const finished = data.finishedBachillerato === "si";
 
     if (data.birthDate && !isAtLeast14YearsOld(data.birthDate)) {
@@ -168,7 +206,6 @@ const formSchema = z
         path: ["birthDate"],
         message: "Debe tener al menos 14 años para matricularse.",
       });
-
       if (data.carreraTecnica) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -199,7 +236,8 @@ const formSchema = z
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ["birthCertificateFile"],
-            message: "La partida de nacimiento es obligatoria cuando no hay cédula.",
+            message:
+              "La partida de nacimiento es obligatoria cuando no hay cédula.",
           });
         }
       }
@@ -213,67 +251,95 @@ interface RegisterFormProps {
   user?: User;
 }
 
-// Función auxiliar para clasificar errores y mostrar mensajes claros
-function getErrorMessage(error: unknown): { userMessage: string; field?: keyof RegisterFormValues } {
+// ... (getErrorMessage se mantiene igual)
+function getErrorMessage(error: unknown): {
+  userMessage: string;
+  field?: keyof RegisterFormValues;
+} {
   if (!(error instanceof Error)) {
-    return { 
-      userMessage: "Error desconocido. Por favor, intente nuevamente." 
+    return {
+      userMessage: "Error desconocido. Por favor, intente nuevamente.",
     };
   }
-
   const message = error.message.toLowerCase();
-
-  // Errores de duplicados
-  if (message.includes('cédula') || message.includes('cedula') || message.includes('ya está registrada')) {
-    return { 
-      userMessage: "La cédula ingresada ya está registrada en el sistema. Verifique el número o contacte al administrador.",
-      field: "cedula"
+  if (
+    message.includes("cédula") ||
+    message.includes("cedula") ||
+    message.includes("ya está registrada")
+  ) {
+    return {
+      userMessage:
+        "La cédula ingresada ya está registrada en el sistema. Verifique el número o contacte al administrador.",
+      field: "cedula",
     };
   }
-  
-  if (message.includes('correo') || message.includes('email') || message.includes('ya está registrado')) {
-    return { 
-      userMessage: "El correo electrónico ya está registrado en el sistema. Utilice otro correo o contacte al administrador.",
-      field: "email"
+  if (
+    message.includes("correo") ||
+    message.includes("email") ||
+    message.includes("ya está registrado")
+  ) {
+    return {
+      userMessage:
+        "El correo electrónico ya está registrado en el sistema. Utilice otro correo o contacte al administrador.",
+      field: "email",
     };
   }
-
-  // Errores de Cloudinary (subida de archivos)
-  if (message.includes('cloudinary') || message.includes('upload') || message.includes('imagen') || message.includes('documentos')) {
-    return { 
-      userMessage: "Error al subir los documentos. Verifique que los archivos sean imágenes válidas y no muy pesadas."
+  if (
+    message.includes("cloudinary") ||
+    message.includes("upload") ||
+    message.includes("imagen") ||
+    message.includes("documentos")
+  ) {
+    return {
+      userMessage:
+        "Error al subir los documentos. Verifique que los archivos sean imágenes válidas y no muy pesadas.",
     };
   }
-
-  // Errores de conexión
-  if (message.includes('network') || message.includes('conexión') || message.includes('conexion') || message.includes('fetch') || message.includes('conexión')) {
-    return { 
-      userMessage: "Error de conexión. Verifique su conexión a internet e intente nuevamente."
+  if (
+    message.includes("network") ||
+    message.includes("conexión") ||
+    message.includes("conexion") ||
+    message.includes("fetch") ||
+    message.includes("conexión")
+  ) {
+    return {
+      userMessage:
+        "Error de conexión. Verifique su conexión a internet e intente nuevamente.",
     };
   }
-
-  // Errores de validación
-  if (message.includes('validación') || message.includes('validacion') || message.includes('validation') || message.includes('inválidos')) {
-    return { 
-      userMessage: "Datos del formulario inválidos. Por favor, revise todos los campos obligatorios."
+  if (
+    message.includes("validación") ||
+    message.includes("validacion") ||
+    message.includes("validation") ||
+    message.includes("inválidos")
+  ) {
+    return {
+      userMessage:
+        "Datos del formulario inválidos. Por favor, revise todos los campos obligatorios.",
     };
   }
-
-  // Errores de carrera
-  if (message.includes('carrera') || message.includes('career') || message.includes('referencia')) {
-    return { 
-      userMessage: "Error con la carrera seleccionada. Por favor, seleccione una carrera válida.",
-      field: "carreraTecnica"
+  if (
+    message.includes("carrera") ||
+    message.includes("career") ||
+    message.includes("referencia")
+  ) {
+    return {
+      userMessage:
+        "Error con la carrera seleccionada. Por favor, seleccione una carrera válida.",
+      field: "carreraTecnica",
     };
   }
-
-  // Error genérico con el mensaje original
-  return { 
-    userMessage: error.message || "Ocurrió un error inesperado. Por favor, intente nuevamente o contacte al administrador."
+  return {
+    userMessage:
+      error.message ||
+      "Ocurrió un error inesperado. Por favor, intente nuevamente o contacte al administrador.",
   };
 }
 
-export default function StudentRegisterForm({ enrollment, user }: RegisterFormProps) {
+export default function StudentRegisterForm({
+  enrollment,
+  user,
+}: RegisterFormProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -295,39 +361,49 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
   const isEditMode = !!enrollment;
   const signatureColor = "black";
 
-  const emptyDefaults: Partial<RegisterFormValues> = useMemo(() => ({
-    nombres: "",
-    apellidos: "",
-    birthDate: undefined,
-    gender: "masculino",
-    estadoCivil: "",
-    cedula: "",
-    municipioNacimiento: municipios[0] || "",
-    deptoDomiciliar: "Nueva Segovia",
-    municipioDomiciliar: municipios[0] || "",
-    comunidad: "",
-    direccion: "",
-    numPersonasHogar: 1,
-    telefonoCelular: "",
-    email: "",
-    nivelAcademico: "Noveno",
-    carreraTecnica: "",
-    nombreEmergencia: "",
-    parentescoEmergencia: "",
-    telefonoEmergencia: "",
-    direccionParentesco: "",
-    hasCedula: "si",
-    finishedBachillerato: "si",
-    cedulaFileFrente: undefined,
-    cedulaFileReverso: undefined,
-    birthCertificateFile: undefined,
-    diplomaFile: undefined,
-    gradesCertificateFile: undefined,
-    firmaProtagonista: undefined,
-  }), []);
+  // =================================================================
+  // 2. VALORES POR DEFECTO (CON CAMPOS 'otro...')
+  // =================================================================
+  const emptyDefaults: Partial<RegisterFormValues> = useMemo(
+    () => ({
+      nombres: "",
+      apellidos: "",
+      birthDate: undefined,
+      gender: "masculino",
+      estadoCivil: "",
+      cedula: "",
+      municipioNacimiento: municipios[0] || "",
+      otroMunicipioNacimiento: "",
+      deptoDomiciliar: "Nueva Segovia",
+      otroDeptoDomiciliar: "",
+      municipioDomiciliar: municipios[0] || "",
+      otroMunicipioDomiciliar: "",
+      comunidad: "",
+      direccion: "",
+      numPersonasHogar: 1,
+      telefonoCelular: "",
+      email: "",
+      nivelAcademico: "Noveno",
+      carreraTecnica: "",
+      nombreEmergencia: "",
+      parentescoEmergencia: "",
+      telefonoEmergencia: "",
+      direccionParentesco: "",
+      hasCedula: "si",
+      finishedBachillerato: "si",
+      cedulaFileFrente: undefined,
+      cedulaFileReverso: undefined,
+      birthCertificateFile: undefined,
+      diplomaFile: undefined,
+      gradesCertificateFile: undefined,
+      firmaProtagonista: undefined,
+    }),
+    []
+  );
 
   const computedDefaults = useMemo<Partial<RegisterFormValues>>(() => {
     if (!enrollment) return emptyDefaults;
+
     const date =
       enrollment.birthDate && typeof enrollment.birthDate === "string"
         ? new Date(enrollment.birthDate)
@@ -338,6 +414,20 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
       setHasBirthDate(true);
     }
 
+    const deptoDomiciliarOptions = ["Nueva Segovia", "Otro"];
+
+    const isOtroMunicipioNac =
+      enrollment.municipioNacimiento &&
+      !municipios.includes(enrollment.municipioNacimiento);
+
+    const isOtroDeptoDom =
+      enrollment.deptoDomiciliar &&
+      !deptoDomiciliarOptions.includes(enrollment.deptoDomiciliar);
+
+    const isOtroMunicipioDom =
+      enrollment.municipioDomiciliar &&
+      !municipios.includes(enrollment.municipioDomiciliar);
+
     return {
       ...emptyDefaults,
       nombres: enrollment.nombres ?? "",
@@ -346,9 +436,22 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
       gender: (enrollment.gender as "masculino" | "femenino") ?? "masculino",
       estadoCivil: enrollment.estadoCivil ?? "",
       cedula: enrollment.cedula ?? "",
-      municipioNacimiento: enrollment.municipioNacimiento ?? municipios[0],
-      deptoDomiciliar: enrollment.deptoDomiciliar ?? "Nueva Segovia",
-      municipioDomiciliar: enrollment.municipioDomiciliar ?? municipios[0],
+      municipioNacimiento: isOtroMunicipioNac
+        ? "Otro"
+        : enrollment.municipioNacimiento ?? municipios[0],
+      otroMunicipioNacimiento: isOtroMunicipioNac
+        ? enrollment.municipioNacimiento
+        : "",
+      deptoDomiciliar: isOtroDeptoDom
+        ? "Otro"
+        : enrollment.deptoDomiciliar ?? "Nueva Segovia",
+      otroDeptoDomiciliar: isOtroDeptoDom ? enrollment.deptoDomiciliar : "",
+      municipioDomiciliar: isOtroMunicipioDom
+        ? "Otro"
+        : enrollment.municipioDomiciliar ?? municipios[0],
+      otroMunicipioDomiciliar: isOtroMunicipioDom
+        ? enrollment.municipioDomiciliar
+        : "",
       comunidad: enrollment.comunidad ?? "",
       direccion: enrollment.direccion ?? "",
       numPersonasHogar: enrollment.numPersonasHogar ?? 1,
@@ -362,11 +465,12 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
       direccionParentesco: (enrollment as Register).direccionParentesco ?? "",
       cedulaFileFrente: enrollment.cedulaFileFrente ?? undefined,
       cedulaFileReverso: enrollment.cedulaFileReverso ?? undefined,
-      birthCertificateFile: (enrollment as Register).birthCertificateFile ?? undefined,
+      birthCertificateFile:
+        (enrollment as Register).birthCertificateFile ?? undefined,
       diplomaFile: enrollment.diplomaFile ?? undefined,
-      gradesCertificateFile: (enrollment as Register).gradesCertificateFile ?? undefined,
-      hasCedula:
-        enrollment.cedulaFileFrente || enrollment.cedula ? "si" : "no",
+      gradesCertificateFile:
+        (enrollment as Register).gradesCertificateFile ?? undefined,
+      hasCedula: enrollment.cedulaFileFrente || enrollment.cedula ? "si" : "no",
       finishedBachillerato: enrollment.diplomaFile ? "si" : "no",
     };
   }, [enrollment, emptyDefaults]);
@@ -381,17 +485,21 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [computedDefaults]);
 
-  const { watch, setValue } = form;
+  // =================================================================
+  // 3. WATCHERS (No son necesarios para la lógica de UX)
+  // =================================================================
+  const { watch, setValue } = form; // Solo necesitamos 'watch' y 'setValue'
+
   const hasCedulaSelected = watch("hasCedula") === "si";
   const finishedBachSelected = watch("finishedBachillerato") === "si";
   const birthDateValue = watch("birthDate");
   const carreraValue = watch("carreraTecnica");
 
   const formatCedula = (value: string) => {
+    // ... (Tu función se mantiene igual)
     if (!value) return "";
     const cleaned = value.replace(/[^0-9A-Z]/gi, "").toUpperCase();
     const parts = [];
-
     if (cleaned.length > 0) {
       parts.push(cleaned.substring(0, 3));
     }
@@ -401,31 +509,32 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
     if (cleaned.length > 9) {
       parts.push(cleaned.substring(9, 14));
     }
-
     return parts.join("-");
   };
 
   const capitalizeWords = (value: string) => {
+    // ... (Tu función se mantiene igual)
     if (!value) return "";
     return value
       .toLowerCase()
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
   };
 
   useEffect(() => {
+    // ... (Tu lógica de birthDateValue se mantiene igual)
     if (birthDateValue) {
       const underage = !isAtLeast14YearsOld(birthDateValue);
       setIsUnderage(underage);
       setHasBirthDate(true);
-
       if (underage && carreraValue) {
         setValue("carreraTecnica", "");
         toast({
           variant: "destructive",
           title: "Edad insuficiente",
-          description: "Debe tener al menos 14 años para seleccionar una carrera.",
+          description:
+            "Debe tener al menos 14 años para seleccionar una carrera.",
         });
       }
     } else {
@@ -443,115 +552,176 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
     toast({
       variant: "destructive",
       title: "Error de Validación",
-      description: "Por favor, revise los campos obligatorios marcados en rojo.",
+      description:
+        "Por favor, revise los campos obligatorios marcados en rojo.",
     });
   };
 
-  // Función para abrir WhatsApp con mensaje predefinido
   const openWhatsAppContact = () => {
+    // ... (Tu función se mantiene igual)
     const phoneNumber = "50584433992";
     const defaultMessage = `Hola, necesito ayuda con el formulario de matrícula.`;
-    
-    const errorDetails = lastError ? `\n\nError encontrado: ${lastError}` : '';
+    const errorDetails = lastError ? `\n\nError encontrado: ${lastError}` : "";
     const userInfo = form.getValues();
     const userDetails = `\n\nDatos del formulario:
     - Nombre: ${userInfo.nombres} ${userInfo.apellidos}
     - Teléfono: ${userInfo.telefonoCelular}
-    ${userInfo.email ? `- Email: ${userInfo.email}` : ''}
-    ${userInfo.cedula ? `- Cédula: ${userInfo.cedula}` : ''}`;
-    
+    ${userInfo.email ? `- Email: ${userInfo.email}` : ""}
+    ${userInfo.cedula ? `- Cédula: ${userInfo.cedula}` : ""}`;
     const fullMessage = `${defaultMessage}${errorDetails}${userDetails}`;
     const encodedMessage = encodeURIComponent(fullMessage);
-    
-    window.open(`https://wa.me/${phoneNumber}?text=${encodedMessage}`, '_blank');
+    window.open(
+      `https://wa.me/${phoneNumber}?text=${encodedMessage}`,
+      "_blank"
+    );
   };
 
+  // =================================================================
+  // 4. FUNCIÓN ONSUBMIT (CON LÓGICA 'otro...')
+  // =================================================================
   async function onSubmit(data: RegisterFormValues) {
-    // Prevenir múltiples envíos
     if (isSubmitting) {
       return;
     }
-    
     setIsSubmitting(true);
     setLastError(null);
     setShowWhatsAppButton(false);
     form.clearErrors();
 
-    const { hasCedula, finishedBachillerato, ...rest } = data;
+    // --- LÓGICA DE REEMPLAZO "OTRO" ---
+    if (data.municipioNacimiento === "Otro") {
+      data.municipioNacimiento = data.otroMunicipioNacimiento || "";
+    }
+    if (data.deptoDomiciliar === "Otro") {
+      data.deptoDomiciliar = data.otroDeptoDomiciliar || "";
+    }
+    if (data.municipioDomiciliar === "Otro") {
+      data.municipioDomiciliar = data.otroMunicipioDomiciliar || "";
+    }
 
-    const [cedulaFrente, cedulaReverso, diploma, birthCertificate, gradesCertificate] = await Promise.all([
-      rest.cedulaFileFrente instanceof File ? fileToDataUri(rest.cedulaFileFrente) : (enrollment as Register)?.cedulaFileFrente,
-      rest.cedulaFileReverso instanceof File ? fileToDataUri(rest.cedulaFileReverso) : (enrollment as Register)?.cedulaFileReverso,
-      rest.diplomaFile instanceof File ? fileToDataUri(rest.diplomaFile) : (enrollment as Register)?.diplomaFile,
-      rest.birthCertificateFile instanceof File ? fileToDataUri(rest.birthCertificateFile) : (enrollment as Register)?.birthCertificateFile,
-      rest.gradesCertificateFile instanceof File ? fileToDataUri(rest.gradesCertificateFile) : (enrollment as Register)?.gradesCertificateFile,
+    const {
+      hasCedula,
+      finishedBachillerato,
+      otroMunicipioNacimiento,
+      otroDeptoDomiciliar,
+      otroMunicipioDomiciliar,
+      ...rest
+    } = data;
+
+    const [
+      cedulaFrente,
+      cedulaReverso,
+      diploma,
+      birthCertificate,
+      gradesCertificate,
+    ] = await Promise.all([
+      rest.cedulaFileFrente instanceof File
+        ? fileToDataUri(rest.cedulaFileFrente)
+        : (enrollment as Register)?.cedulaFileFrente,
+      rest.cedulaFileReverso instanceof File
+        ? fileToDataUri(rest.cedulaFileReverso)
+        : (enrollment as Register)?.cedulaFileReverso,
+      rest.diplomaFile instanceof File
+        ? fileToDataUri(rest.diplomaFile)
+        : (enrollment as Register)?.diplomaFile,
+      rest.birthCertificateFile instanceof File
+        ? fileToDataUri(rest.birthCertificateFile)
+        : (enrollment as Register)?.birthCertificateFile,
+      rest.gradesCertificateFile instanceof File
+        ? fileToDataUri(rest.gradesCertificateFile)
+        : (enrollment as Register)?.gradesCertificateFile,
     ]);
 
     const enrollmentData: Register = {
       id: isEditMode && enrollment ? enrollment.id : crypto.randomUUID(),
       ...rest,
       birthDate: rest.birthDate as Date,
-      cedula: typeof rest.cedula === "string" ? (rest.cedula.trim() || undefined) : undefined,
-      email: typeof rest.email === "string" ? (rest.email.trim() || undefined) : undefined,
+      cedula:
+        typeof rest.cedula === "string"
+          ? rest.cedula.trim() || undefined
+          : undefined,
+      email:
+        typeof rest.email === "string"
+          ? rest.email.trim() || undefined
+          : undefined,
       numPersonasHogar: Number(rest.numPersonasHogar),
-      createdAt: isEditMode && enrollment ? new Date(enrollment.createdAt) : new Date(),
+      createdAt:
+        isEditMode && enrollment ? new Date(enrollment.createdAt) : new Date(),
       updatedAt: new Date(),
       cedulaFileFrente: hasCedula === "si" ? cedulaFrente : undefined,
       cedulaFileReverso: hasCedula === "si" ? cedulaReverso : undefined,
       birthCertificateFile: hasCedula === "no" ? birthCertificate : undefined,
       diplomaFile: finishedBachillerato === "si" ? diploma : undefined,
-      gradesCertificateFile: finishedBachillerato === "no" ? gradesCertificate : undefined,
-      firmaProtagonista: sigCanvas.current?.isEmpty() ? (enrollment as Register)?.firmaProtagonista : sigCanvas.current?.toDataURL("image/png"),
-      userId: enrollment ? (enrollment as PrismaRegister).userId : user?.id || null,
-      user: enrollment ? (enrollment as Register).user : { name: user?.name || null },
+      gradesCertificateFile:
+        finishedBachillerato === "no" ? gradesCertificate : undefined,
+      firmaProtagonista: sigCanvas.current?.isEmpty()
+        ? (enrollment as Register)?.firmaProtagonista
+        : sigCanvas.current?.toDataURL("image/png"),
+      userId: enrollment
+        ? (enrollment as PrismaRegister).userId
+        : user?.id || null,
+      user: enrollment
+        ? (enrollment as Register).user
+        : { name: user?.name || null },
     };
 
     if (!isUnderage) {
-      if (!enrollmentData.carreraTecnica || String(enrollmentData.carreraTecnica).trim() === "") {
-        form.setError("carreraTecnica", { type: "manual", message: "Debe seleccionar una carrera técnica." });
-        toast({ variant: "destructive", title: "Falta seleccionar carrera", description: "Por favor seleccione la carrera técnica que desea estudiar." });
+      if (
+        !enrollmentData.carreraTecnica ||
+        String(enrollmentData.carreraTecnica).trim() === ""
+      ) {
+        form.setError("carreraTecnica", {
+          type: "manual",
+          message: "Debe seleccionar una carrera técnica.",
+        });
+        toast({
+          variant: "destructive",
+          title: "Falta seleccionar carrera",
+          description:
+            "Por favor seleccione la carrera técnica que desea estudiar.",
+        });
         setIsSubmitting(false);
         return;
       }
     }
 
     try {
-      // Siempre enviar al servidor
       let result;
       if (isEditMode && enrollment) {
-        result = await updateEnrollmentAction(enrollmentData.id, enrollmentData);
+        result = await updateEnrollmentAction(
+          enrollmentData.id,
+          enrollmentData
+        );
       } else {
         result = await addEnrollment(enrollmentData, user?.id);
       }
 
-      // VERIFICAR LA RESPUESTA DE LA ACCIÓN DEL SERVIDOR
       if (!result.success) {
-        throw new Error(result.error || 'Error desconocido del servidor');
+        throw new Error(result.error || "Error desconocido del servidor");
       }
 
       Swal.fire({
-        title: isEditMode ? '¡Matrícula Actualizada!' : '¡Matrícula Exitosa!',
-        text: isEditMode ? `El registro de ${enrollmentData.nombres} ha sido actualizado.` : `Tu registro para ${enrollmentData.carreraTecnica} ha sido enviado correctamente.`,
-        icon: 'success',
-        confirmButtonColor: '#3085d6',
-        confirmButtonText: 'Entendido'
+        title: isEditMode ? "¡Matrícula Actualizada!" : "¡Matrícula Exitosa!",
+        text: isEditMode
+          ? `El registro de ${enrollmentData.nombres} ha sido actualizado.`
+          : `Tu registro para ${enrollmentData.carreraTecnica} ha sido enviado correctamente.`,
+        icon: "success",
+        confirmButtonColor: "#3085d6",
+        confirmButtonText: "Entendido",
       });
 
       if (!isEditMode) {
         form.reset(emptyDefaults);
         clearSignature();
       }
-
     } catch (error: unknown) {
       console.error("Form submission error:", error);
-      
       const { userMessage, field } = getErrorMessage(error);
       setLastError(userMessage);
       setShowWhatsAppButton(true);
 
-      // Mostrar alerta mejorada con SweetAlert2
       Swal.fire({
-        title: 'Error en el Envío',
+        title: "Error en el Envío",
         html: `
           <div class="text-left">
             <p class="mb-3">${userMessage}</p>
@@ -560,19 +730,18 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
             </p>
           </div>
         `,
-        icon: 'error',
-        confirmButtonColor: '#d33',
-        confirmButtonText: 'Entendido',
+        icon: "error",
+        confirmButtonColor: "#d33",
+        confirmButtonText: "Entendido",
         customClass: {
-          popup: 'text-left'
-        }
+          popup: "text-left",
+        },
       });
 
-      // Establecer error en el campo específico si corresponde
       if (field) {
-        form.setError(field, { 
-          type: "manual", 
-          message: userMessage 
+        form.setError(field, {
+          type: "manual",
+          message: userMessage,
         });
       }
     } finally {
@@ -581,6 +750,7 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
   }
 
   const formGridClass = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4";
+
   const groupedCareers = careers.reduce((acc, career) => {
     const shift = career.shift;
     if (!acc[shift]) {
@@ -590,19 +760,28 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
     return acc;
   }, {} as Record<string, Career[]>);
 
+  // =================================================================
+  // 5. JSX ACTUALIZADO (CON LÓGICA DE REEMPLAZO)
+  // =================================================================
   return (
     <>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-4">
+        <form
+          onSubmit={form.handleSubmit(onSubmit, onInvalid)}
+          className="space-y-4"
+        >
           <Accordion
             type="multiple"
             defaultValue={["item-1"]}
             className="w-full"
           >
             <AccordionItem value="item-1">
-              <AccordionTrigger className="font-bold text-lg">I. Datos Personales</AccordionTrigger>
+              <AccordionTrigger className="font-bold text-lg">
+                I. Datos Personales
+              </AccordionTrigger>
               <AccordionContent className="space-y-6 pt-4">
                 <div className={formGridClass}>
+                  {/* ... (Campos nombres, apellidos, birthDate, gender, estadoCivil, cedula) ... */}
                   <FormField
                     control={form.control}
                     name="nombres"
@@ -613,7 +792,9 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                           <Input
                             placeholder="Nombres del estudiante"
                             {...field}
-                            onChange={(e) => field.onChange(capitalizeWords(e.target.value))}
+                            onChange={(e) =>
+                              field.onChange(capitalizeWords(e.target.value))
+                            }
                           />
                         </FormControl>
                         <FormMessage />
@@ -630,7 +811,9 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                           <Input
                             placeholder="Apellidos del estudiante"
                             {...field}
-                            onChange={(e) => field.onChange(capitalizeWords(e.target.value))}
+                            onChange={(e) =>
+                              field.onChange(capitalizeWords(e.target.value))
+                            }
                           />
                         </FormControl>
                         <FormMessage />
@@ -643,20 +826,34 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
                         <FormLabel>Fecha de Nacimiento</FormLabel>
-                        <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                        <Popover
+                          open={isCalendarOpen}
+                          onOpenChange={setIsCalendarOpen}
+                        >
                           <PopoverTrigger asChild>
                             <FormControl>
                               <Button
                                 variant={"outline"}
-                                className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
+                                className={cn(
+                                  "pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
                               >
-                                {field.value ? format(field.value, "PPP", { locale: es }) : <span>Seleccione una fecha</span>}
+                                {field.value ? (
+                                  format(field.value, "PPP", { locale: es })
+                                ) : (
+                                  <span>Seleccione una fecha</span>
+                                )}
                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                               </Button>
                             </FormControl>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar date={field.value} setDate={field.onChange} setIsOpen={setIsCalendarOpen} />
+                            <Calendar
+                              date={field.value}
+                              setDate={field.onChange}
+                              setIsOpen={setIsCalendarOpen}
+                            />
                           </PopoverContent>
                         </Popover>
                         <FormMessage />
@@ -669,7 +866,10 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Sexo</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Seleccione el sexo" />
@@ -690,7 +890,10 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Estado Civil</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Seleccione estado civil" />
@@ -714,7 +917,10 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          Cédula <span className="text-muted-foreground text-xs">(Opcional)</span>
+                          Cédula{" "}
+                          <span className="text-muted-foreground text-xs">
+                            (Opcional)
+                          </span>
                         </FormLabel>
                         <FormControl>
                           <Input
@@ -734,75 +940,216 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                 </div>
 
                 <div className={formGridClass}>
+                  {/* --- 1. CAMPO MUNICIPIO NACIMIENTO (ACTUALIZADO) --- */}
                   <FormField
                     control={form.control}
                     name="municipioNacimiento"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Municipio de Nacimiento</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Seleccione un municipio" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {municipios.map((m) => (
-                              <SelectItem key={m} value={m}>
-                                {m}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
+                        {watch("municipioNacimiento") === "Otro" ? (
+                          <FormField
+                            control={form.control}
+                            name="otroMunicipioNacimiento"
+                            render={({ field: otroField }) => (
+                              <>
+                                <div className="flex items-center space-x-2">
+                                  <FormControl>
+                                    <Input
+                                      placeholder="Escriba el municipio"
+                                      {...otroField}
+                                      onChange={(e) =>
+                                        otroField.onChange(
+                                          capitalizeWords(e.target.value)
+                                        )
+                                      }
+                                    />
+                                  </FormControl>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => {
+                                      setValue(
+                                        "municipioNacimiento",
+                                        municipios[0] || ""
+                                      );
+                                      setValue("otroMunicipioNacimiento", "");
+                                    }}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                                <FormMessage />
+                              </>
+                            )}
+                          />
+                        ) : (
+                          <>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Seleccione un municipio" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {municipios.map((m) => (
+                                  <SelectItem key={m} value={m}>
+                                    {m}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </>
+                        )}
                       </FormItem>
                     )}
                   />
+
+                  {/* --- 2. CAMPO DEPTO DOMICILIAR (ACTUALIZADO) --- */}
                   <FormField
                     control={form.control}
                     name="deptoDomiciliar"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Departamento Domiciliar</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Seleccione un departamento" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="Nueva Segovia">Nueva Segovia</SelectItem>
-                            <SelectItem value="Otro">Otro</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
+                        {watch("deptoDomiciliar") === "Otro" ? (
+                          <FormField
+                            control={form.control}
+                            name="otroDeptoDomiciliar"
+                            render={({ field: otroField }) => (
+                              <>
+                                <div className="flex items-center space-x-2">
+                                  <FormControl>
+                                    <Input
+                                      placeholder="Escriba el departamento"
+                                      {...otroField}
+                                      onChange={(e) =>
+                                        otroField.onChange(
+                                          capitalizeWords(e.target.value)
+                                        )
+                                      }
+                                    />
+                                  </FormControl>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => {
+                                      setValue(
+                                        "deptoDomiciliar",
+                                        "Nueva Segovia"
+                                      );
+                                      setValue("otroDeptoDomiciliar", "");
+                                    }}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                                <FormMessage />
+                              </>
+                            )}
+                          />
+                        ) : (
+                          <>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Seleccione un departamento" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="Nueva Segovia">
+                                  Nueva Segovia
+                                </SelectItem>
+                                <SelectItem value="Otro">Otro</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </>
+                        )}
                       </FormItem>
                     )}
                   />
+
+                  {/* --- 3. CAMPO MUNICIPIO DOMICILIAR (ACTUALIZADO) --- */}
                   <FormField
                     control={form.control}
                     name="municipioDomiciliar"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Municipio Domiciliar</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Seleccione un municipio" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {municipios.map((m) => (
-                              <SelectItem key={m} value={m}>
-                                {m}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
+                        {watch("municipioDomiciliar") === "Otro" ? (
+                          <FormField
+                            control={form.control}
+                            name="otroMunicipioDomiciliar"
+                            render={({ field: otroField }) => (
+                              <>
+                                <div className="flex items-center space-x-2">
+                                  <FormControl>
+                                    <Input
+                                      placeholder="Escriba el municipio"
+                                      {...otroField}
+                                      onChange={(e) =>
+                                        otroField.onChange(
+                                          capitalizeWords(e.target.value)
+                                        )
+                                      }
+                                    />
+                                  </FormControl>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => {
+                                      setValue(
+                                        "municipioDomiciliar",
+                                        municipios[0] || ""
+                                      );
+                                      setValue("otroMunicipioDomiciliar", "");
+                                    }}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                                <FormMessage />
+                              </>
+                            )}
+                          />
+                        ) : (
+                          <>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Seleccione un municipio" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {municipios.map((m) => (
+                                  <SelectItem key={m} value={m}>
+                                    {m}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </>
+                        )}
                       </FormItem>
                     )}
                   />
+
+                  {/* ... (Campos comunidad, direccion, numPersonasHogar) ... */}
                   <FormField
                     control={form.control}
                     name="comunidad"
@@ -810,7 +1157,11 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                       <FormItem>
                         <FormLabel>Comunidad</FormLabel>
                         <FormControl>
-                          <Input placeholder="Comunidad o barrio" {...field} autoCapitalize="words" />
+                          <Input
+                            placeholder="Comunidad o barrio"
+                            {...field}
+                            autoCapitalize="words"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -823,7 +1174,11 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                       <FormItem>
                         <FormLabel>Dirección</FormLabel>
                         <FormControl>
-                          <Input placeholder="Dirección exacta" {...field} autoCapitalize="words" />
+                          <Input
+                            placeholder="Dirección exacta"
+                            {...field}
+                            autoCapitalize="words"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -836,7 +1191,12 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                       <FormItem>
                         <FormLabel>Nº Personas en Hogar</FormLabel>
                         <FormControl>
-                          <Input type="number" min="1" placeholder="Ej: 4" {...field} />
+                          <Input
+                            type="number"
+                            min="1"
+                            placeholder="Ej: 4"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -845,13 +1205,17 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                 </div>
 
                 <div className={formGridClass}>
+                  {/* ... (Campos nivelAcademico, telefonoCelular, email) ... */}
                   <FormField
                     control={form.control}
                     name="nivelAcademico"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Nivel Académico</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Último nivel aprobado" />
@@ -860,7 +1224,9 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                           <SelectContent>
                             <SelectItem value="Noveno">Noveno Grado</SelectItem>
                             <SelectItem value="Decimo">Décimo Grado</SelectItem>
-                            <SelectItem value="Undecimo">Undécimo Grado</SelectItem>
+                            <SelectItem value="Undecimo">
+                              Undécimo Grado
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -874,7 +1240,12 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                       <FormItem>
                         <FormLabel>Teléfono Celular</FormLabel>
                         <FormControl>
-                          <Input type="tel" placeholder="Ej: 88887777" maxLength={8} {...field} />
+                          <Input
+                            type="tel"
+                            placeholder="Ej: 88887777"
+                            maxLength={8}
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -886,10 +1257,17 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          Correo <span className="text-muted-foreground text-xs">(Opcional)</span>
+                          Correo{" "}
+                          <span className="text-muted-foreground text-xs">
+                            (Opcional)
+                          </span>
                         </FormLabel>
                         <FormControl>
-                          <Input type="email" placeholder="ejemplo@correo.com" {...field} />
+                          <Input
+                            type="email"
+                            placeholder="ejemplo@correo.com"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -899,6 +1277,7 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
               </AccordionContent>
             </AccordionItem>
 
+            {/* --- RESTO DE LOS ACCORDION ITEMS (2, 3, 4) --- */}
             <AccordionItem value="item-2">
               <AccordionTrigger className="font-bold text-lg">
                 <span className="text-left">
@@ -927,18 +1306,24 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {Object.entries(groupedCareers).map(([shift, careerList]) => (
-                              <SelectGroup key={shift}>
-                                <SelectLabel>
-                                  {shift.charAt(0).toUpperCase() + shift.slice(1).toLowerCase()}
-                                </SelectLabel>
-                                {careerList.map((career) => (
-                                  <SelectItem key={career.id} value={career.name}>
-                                    {career.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectGroup>
-                            ))}
+                            {Object.entries(groupedCareers).map(
+                              ([shift, careerList]) => (
+                                <SelectGroup key={shift}>
+                                  <SelectLabel>
+                                    {shift.charAt(0).toUpperCase() +
+                                      shift.slice(1).toLowerCase()}
+                                  </SelectLabel>
+                                  {careerList.map((career) => (
+                                    <SelectItem
+                                      key={career.id}
+                                      value={career.name}
+                                    >
+                                      {career.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              )
+                            )}
                             {careers.length === 0 && (
                               <SelectItem value="loading" disabled>
                                 Cargando carreras...
@@ -946,15 +1331,16 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                             )}
                           </SelectContent>
                         </Select>
-
                         {!hasBirthDate && (
                           <FormDescription className="text-amber-600">
-                            Primero debe ingresar su fecha de nacimiento para seleccionar una carrera.
+                            Primero debe ingresar su fecha de nacimiento para
+                            seleccionar una carrera.
                           </FormDescription>
                         )}
                         {hasBirthDate && isUnderage && (
                           <FormDescription className="text-red-500">
-                            Debe tener al menos 14 años para seleccionar una carrera.
+                            Debe tener al menos 14 años para seleccionar una
+                            carrera.
                           </FormDescription>
                         )}
                         <FormMessage />
@@ -964,7 +1350,6 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                 </div>
               </AccordionContent>
             </AccordionItem>
-
             <AccordionItem value="item-3">
               <AccordionTrigger className="font-bold text-lg">
                 <span className="text-left">
@@ -984,7 +1369,9 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                           <Input
                             placeholder="Nombre completo"
                             {...field}
-                            onChange={(e) => field.onChange(capitalizeWords(e.target.value))}
+                            onChange={(e) =>
+                              field.onChange(capitalizeWords(e.target.value))
+                            }
                           />
                         </FormControl>
                         <FormMessage />
@@ -1001,7 +1388,9 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                           <Input
                             placeholder="Ej: Madre, Padre, Tío"
                             {...field}
-                            onChange={(e) => field.onChange(capitalizeWords(e.target.value))}
+                            onChange={(e) =>
+                              field.onChange(capitalizeWords(e.target.value))
+                            }
                           />
                         </FormControl>
                         <FormMessage />
@@ -1015,7 +1404,12 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                       <FormItem>
                         <FormLabel>Teléfono</FormLabel>
                         <FormControl>
-                          <Input type="tel" placeholder="Número de contacto" maxLength={8} {...field} />
+                          <Input
+                            type="tel"
+                            placeholder="Número de contacto"
+                            maxLength={8}
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1027,10 +1421,17 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          Dirección <span className="text-muted-foreground text-xs">(Opcional)</span>
+                          Dirección{" "}
+                          <span className="text-muted-foreground text-xs">
+                            (Opcional)
+                          </span>
                         </FormLabel>
                         <FormControl>
-                          <Input placeholder="Dirección del contacto" {...field} autoCapitalize="words" />
+                          <Input
+                            placeholder="Dirección del contacto"
+                            {...field}
+                            autoCapitalize="words"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1039,9 +1440,10 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                 </div>
               </AccordionContent>
             </AccordionItem>
-
             <AccordionItem value="item-4">
-              <AccordionTrigger className="font-bold text-lg">IV. Documentos y Firma</AccordionTrigger>
+              <AccordionTrigger className="font-bold text-lg">
+                IV. Documentos y Firma
+              </AccordionTrigger>
               <AccordionContent className="space-y-6 pt-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4">
@@ -1051,7 +1453,10 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Documento de Identidad</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccione..." />
@@ -1059,14 +1464,15 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                             </FormControl>
                             <SelectContent>
                               <SelectItem value="si">Cédula</SelectItem>
-                              <SelectItem value="no">Partida de Nacimiento</SelectItem>
+                              <SelectItem value="no">
+                                Partida de Nacimiento
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-
                     {hasCedulaSelected ? (
                       <div className="grid grid-cols-2 gap-2">
                         <FormField
@@ -1075,7 +1481,11 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Lado Frontal</FormLabel>
-                              <ImageDropzone field={field} icon={FaRegAddressCard} label="Anverso" />
+                              <ImageDropzone
+                                field={field}
+                                icon={FaRegAddressCard}
+                                label="Anverso"
+                              />
                               <FormMessage />
                             </FormItem>
                           )}
@@ -1086,7 +1496,11 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Lado trasero</FormLabel>
-                              <ImageDropzone field={field} icon={FaRegCreditCard} label="Reverso" />
+                              <ImageDropzone
+                                field={field}
+                                icon={FaRegCreditCard}
+                                label="Reverso"
+                              />
                               <FormMessage />
                             </FormItem>
                           )}
@@ -1099,16 +1513,21 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Partida de Nacimiento</FormLabel>
-                            <ImageDropzone field={field} icon={FaFileAlt} label="Partida de Nacimiento" />
+                            <ImageDropzone
+                              field={field}
+                              icon={FaFileAlt}
+                              label="Partida de Nacimiento"
+                            />
                             <FormMessage />
                           </FormItem>
                         )}
                       />
                     )}
-
-                    <FormDescription>Seleccione el tipo de documento que va a adjuntar. (fotografia)</FormDescription>
+                    <FormDescription>
+                      Seleccione el tipo de documento que va a adjuntar.
+                      (fotografia)
+                    </FormDescription>
                   </div>
-
                   <div className="space-y-4">
                     <FormField
                       control={form.control}
@@ -1116,7 +1535,10 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>¿Culminó bachillerato?</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccione..." />
@@ -1131,7 +1553,6 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                         </FormItem>
                       )}
                     />
-
                     {finishedBachSelected ? (
                       <FormField
                         control={form.control}
@@ -1139,7 +1560,11 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Diploma</FormLabel>
-                            <ImageDropzone field={field} icon={FcDiploma1} label="Diploma" />
+                            <ImageDropzone
+                              field={field}
+                              icon={FcDiploma1}
+                              label="Diploma"
+                            />
                             <FormMessage />
                           </FormItem>
                         )}
@@ -1151,50 +1576,74 @@ export default function StudentRegisterForm({ enrollment, user }: RegisterFormPr
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Certificado de Notas</FormLabel>
-                            <ImageDropzone field={field} icon={FaFileAlt} label="Certificado de Notas" />
+                            <ImageDropzone
+                              field={field}
+                              icon={FaFileAlt}
+                              label="Certificado de Notas"
+                            />
                             <FormMessage />
                           </FormItem>
                         )}
                       />
                     )}
-
                     <FormDescription>
-                      Adjunte su diploma de bachillerato. En caso de no haber culminado la secundaria, adjunte el certificado de notas de 7°, 8° y 9° grado (fotografía).
+                      Adjunte su diploma de bachillerato. En caso de no haber
+                      culminado la secundaria, adjunte el certificado de notas
+                      de 7°, 8° y 9° grado (fotografía).
                     </FormDescription>
                   </div>
                 </div>
 
                 <FormItem>
                   <FormLabel>
-                    Firma del Estudiante <span className="text-muted-foreground text-xs">(Opcional)</span>
+                    Firma del Estudiante{" "}
+                    <span className="text-muted-foreground text-xs">
+                      (Opcional)
+                    </span>
                   </FormLabel>
                   <div className="relative w-full h-48 rounded-md border border-input">
                     <SignaturePad
                       // @ts-expect-error: 'ref' is not a valid prop for this component.
                       ref={sigCanvas}
                       penColor={signatureColor}
-                      canvasProps={{ className: "w-full h-full rounded-md bg-white dark:bg-gray-900" }}
+                      canvasProps={{
+                        className:
+                          "w-full h-full rounded-md bg-white dark:bg-gray-900",
+                      }}
                     />
-                    <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 dark:text-white" onClick={clearSignature}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-1 right-1 dark:text-white"
+                      onClick={clearSignature}
+                    >
                       <RefreshCw className="h-4 w-4" />
                     </Button>
                   </div>
-                  <FormDescription>Dibuja tu firma en el recuadro.</FormDescription>
+                  <FormDescription>
+                    Dibuja tu firma en el recuadro.
+                  </FormDescription>
                 </FormItem>
               </AccordionContent>
             </AccordionItem>
           </Accordion>
 
+          {/* --- BOTONES DE ENVÍO --- */}
           <div className="flex flex-col gap-3">
-            <Button type="submit" className="w-full" disabled={isSubmitting || isUnderage}>
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isSubmitting || isUnderage}
+            >
+              {isSubmitting && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
               {isEditMode ? "Actualizar Matrícula" : "Guardar Matrícula"}
               {isUnderage && " (Debe tener al menos 14 años)"}
             </Button>
-
-            {/* Botón de contacto de WhatsApp - Solo visible cuando hay error */}
             {showWhatsAppButton && (
-              <Button 
+              <Button
                 type="button"
                 className="w-full  bg-green-600 text-white hover:bg-green-700"
                 onClick={openWhatsAppContact}

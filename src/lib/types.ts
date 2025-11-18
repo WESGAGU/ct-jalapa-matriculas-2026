@@ -1,4 +1,4 @@
-import type { Career } from '@prisma/client';
+import type { Career, Role } from '@prisma/client';
 
 export interface Register {
   id: string;
@@ -54,5 +54,6 @@ export interface User {
   name?: string | null;
   email: string;
   password: string;
+  role: Role;
   // Agrega aquí otros campos si los necesitas, como 'role'
 }

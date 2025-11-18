@@ -254,8 +254,8 @@ export const EnrollmentPDF = ({ enrollment }: EnrollmentPDFProps) => (
         <View style={styles.section}>
             <Text style={styles.sectionTitle}>IV. DATOS DE LA ESPECIALIDAD O CURSO</Text>
             <View style={styles.grid}>
-                <Field label="DEPARTAMENTO" value={enrollment.deptoDomiciliar} />
-                <Field label="MUNICIPIO" value="" />
+                <Field label="DEPARTAMENTO" value="Nueva Segovia" />
+                <Field label="MUNICIPIO" value="Jalapa" />
                 <Field label="COMUNIDAD" value="" />
                 <Field label="NOMBRE DE LA ESCUELA" value="" />
                 <Field label="DIRECCIÓN DE LA ESCUELA" value="" />
