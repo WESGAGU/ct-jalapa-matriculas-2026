@@ -992,8 +992,13 @@ export default function RegisterForm({ enrollment, user, allUsers = [] }: Regist
                                   {shift.charAt(0).toUpperCase() + shift.slice(1).toLowerCase()}
                                 </SelectLabel>
                                 {careerList.map((career) => (
-                                  <SelectItem key={career.id} value={career.name} className="cursor-pointer">
-                                    {career.name}
+                                  <SelectItem 
+                                    key={career.id} 
+                                    value={career.name} 
+                                    className="cursor-pointer"
+                                    disabled={!career.active} // Cambios aquí
+                                  >
+                                    {career.name} {!career.active ? "(Sin cupos)" : ""}
                                   </SelectItem>
                                 ))}
                               </SelectGroup>

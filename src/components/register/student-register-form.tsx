@@ -1440,8 +1440,9 @@ export default function StudentRegisterForm({
                                         key={career.id}
                                         value={career.name}
                                         className="cursor-pointer"
+                                        disabled={!career.active}
                                       >
-                                        {career.name}
+                                        {career.name} {!career.active ? "(Sin cupos)" : ""}
                                       </SelectItem>
                                     ))}
                                   </SelectGroup>

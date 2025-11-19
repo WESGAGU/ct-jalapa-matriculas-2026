@@ -700,7 +700,9 @@ export async function getEnrollmentStats() {
 
 export async function getCareers() {
   return await prisma.career.findMany({
-    where: { active: true },
+    // IMPORTANTE: Se comentó la línea 'where' para que traiga TODAS las carreras
+    // incluyendo las inactivas. Así el formulario puede mostrarlas deshabilitadas.
+    // where: { active: true }, 
     orderBy: { name: 'asc',
     },
   });
