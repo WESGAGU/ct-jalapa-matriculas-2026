@@ -70,13 +70,69 @@ const SignaturePad = dynamic(() => import("react-signature-canvas"), {
   ssr: false,
 });
 
-const fileToDataUri = (file: File) =>
-  new Promise<string>((resolve, reject) => {
+// --- FUNCIÓN DE COMPRESIÓN INTELIGENTE (Reemplaza a fileToDataUri) ---
+const compressImage = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    // 1. Si pesa menos de 1MB, devolvemos la imagen original sin tocarla.
+    if (file.size < 1024 * 1024) {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      return;
+    }
+
+    // 2. Si es mayor a 1MB, procedemos a redimensionar y comprimir
     const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
     reader.readAsDataURL(file);
+    
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+
+        // Redimensionar a Full HD (1920px) máximo para reducir dimensiones físicas
+        const MAX_DIMENSION = 1920; 
+
+        if (width > height) {
+          if (width > MAX_DIMENSION) {
+            height *= MAX_DIMENSION / width;
+            width = MAX_DIMENSION;
+          }
+        } else {
+          if (height > MAX_DIMENSION) {
+            width *= MAX_DIMENSION / height;
+            height = MAX_DIMENSION;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        // 3. Compresión iterativa buscando llegar a ~500KB
+        let quality = 0.7; // Calidad inicial 70%
+        let dataUrl = canvas.toDataURL("image/jpeg", quality);
+        const targetSize = 500 * 1024; // 500KB
+
+        // Si sigue siendo muy pesado, bajamos calidad progresivamente
+        while (dataUrl.length * 0.75 > targetSize && quality > 0.2) {
+             quality -= 0.1;
+             dataUrl = canvas.toDataURL("image/jpeg", quality);
+        }
+
+        resolve(dataUrl);
+      };
+      img.onerror = (error) => reject(error);
+    };
+    reader.onerror = (error) => reject(error);
   });
+};
 
 const municipios = [
   "Jalapa", "Murra", "El Jicaro", "Ocotal", "Quilalí", "Dipilto",
@@ -433,7 +489,7 @@ export default function RegisterForm({ enrollment, user, allUsers = [] }: Regist
   };
 
   // =================================================================
-  // 4. ONSUBMIT (INTACTO)
+  // 4. ONSUBMIT (ACTUALIZADO CON COMPRESIÓN)
   // =================================================================
   async function onSubmit(data: RegisterFormValues) {
     setIsSubmitting(true);
@@ -445,12 +501,27 @@ export default function RegisterForm({ enrollment, user, allUsers = [] }: Regist
 
     const { hasCedula, finishedBachillerato, createdAt, userId, otroMunicipioNacimiento, otroDeptoDomiciliar, otroMunicipioDomiciliar, ...rest } = data; 
 
+    // AQUÍ APLICAMOS LA COMPRESIÓN ANTES DE ENVIAR
     const [cedulaFrente, cedulaReverso, diploma, birthCertificate, gradesCertificate] = await Promise.all([
-      rest.cedulaFileFrente instanceof File ? fileToDataUri(rest.cedulaFileFrente) : (enrollment as Register)?.cedulaFileFrente,
-      rest.cedulaFileReverso instanceof File ? fileToDataUri(rest.cedulaFileReverso) : (enrollment as Register)?.cedulaFileReverso,
-      rest.diplomaFile instanceof File ? fileToDataUri(rest.diplomaFile) : (enrollment as Register)?.diplomaFile,
-      rest.birthCertificateFile instanceof File ? fileToDataUri(rest.birthCertificateFile) : (enrollment as Register)?.birthCertificateFile,
-      rest.gradesCertificateFile instanceof File ? fileToDataUri(rest.gradesCertificateFile) : (enrollment as Register)?.gradesCertificateFile,
+      rest.cedulaFileFrente instanceof File 
+        ? compressImage(rest.cedulaFileFrente) 
+        : (enrollment as Register)?.cedulaFileFrente,
+      
+      rest.cedulaFileReverso instanceof File 
+        ? compressImage(rest.cedulaFileReverso) 
+        : (enrollment as Register)?.cedulaFileReverso,
+      
+      rest.diplomaFile instanceof File 
+        ? compressImage(rest.diplomaFile) 
+        : (enrollment as Register)?.diplomaFile,
+      
+      rest.birthCertificateFile instanceof File 
+        ? compressImage(rest.birthCertificateFile) 
+        : (enrollment as Register)?.birthCertificateFile,
+      
+      rest.gradesCertificateFile instanceof File 
+        ? compressImage(rest.gradesCertificateFile) 
+        : (enrollment as Register)?.gradesCertificateFile,
     ]);
 
     const enrollmentData: Register = {
@@ -795,7 +866,7 @@ export default function RegisterForm({ enrollment, user, allUsers = [] }: Regist
                       </FormItem>
                     )}
                   />
-                  {/* ... Depto Domiciliar y Municipio Domiciliar (Lógica idéntica al público) ... */}
+                  {/* ... Depto Domiciliar y Municipio Domiciliar ... */}
                   <FormField
                     control={form.control}
                     name="deptoDomiciliar"
@@ -996,7 +1067,7 @@ export default function RegisterForm({ enrollment, user, allUsers = [] }: Regist
                                     key={career.id} 
                                     value={career.name} 
                                     className="cursor-pointer"
-                                    disabled={!career.active} // Cambios aquí
+                                    disabled={!career.active} // Funcionalidad de inactivo
                                   >
                                     {career.name} {!career.active ? "(Sin cupos)" : ""}
                                   </SelectItem>

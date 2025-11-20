@@ -71,13 +71,70 @@ const SignaturePad = dynamic(() => import("react-signature-canvas"), {
   ssr: false,
 });
 
-const fileToDataUri = (file: File) =>
-  new Promise<string>((resolve, reject) => {
+// --- FUNCIÓN DE COMPRESIÓN INTELIGENTE ---
+// Reemplaza a la antigua fileToDataUri
+const compressImage = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    // 1. Si pesa menos de 1MB, devolvemos la imagen original sin tocarla.
+    if (file.size < 1024 * 1024) {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      return;
+    }
+
+    // 2. Si es mayor a 1MB, procedemos a redimensionar y comprimir
     const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
     reader.readAsDataURL(file);
+    
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+
+        // Redimensionar a Full HD (1920px) máximo para reducir dimensiones físicas
+        const MAX_DIMENSION = 1920; 
+
+        if (width > height) {
+          if (width > MAX_DIMENSION) {
+            height *= MAX_DIMENSION / width;
+            width = MAX_DIMENSION;
+          }
+        } else {
+          if (height > MAX_DIMENSION) {
+            width *= MAX_DIMENSION / height;
+            height = MAX_DIMENSION;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        // 3. Compresión iterativa buscando llegar a ~500KB
+        let quality = 0.7; // Calidad inicial 70%
+        let dataUrl = canvas.toDataURL("image/jpeg", quality);
+        const targetSize = 500 * 1024; // 500KB
+
+        // Si sigue siendo muy pesado, bajamos calidad progresivamente
+        while (dataUrl.length * 0.75 > targetSize && quality > 0.2) {
+             quality -= 0.1;
+             dataUrl = canvas.toDataURL("image/jpeg", quality);
+        }
+
+        resolve(dataUrl);
+      };
+      img.onerror = (error) => reject(error);
+    };
+    reader.onerror = (error) => reject(error);
   });
+};
 
 const municipios = [
   "Jalapa",
@@ -691,6 +748,9 @@ export default function StudentRegisterForm({
       ...rest
     } = data;
 
+    // =======================================================
+    // AQUÍ SE APLICA LA COMPRESIÓN EN EL MOMENTO DEL ENVÍO
+    // =======================================================
     const [
       cedulaFrente,
       cedulaReverso,
@@ -699,19 +759,19 @@ export default function StudentRegisterForm({
       gradesCertificate,
     ] = await Promise.all([
       rest.cedulaFileFrente instanceof File
-        ? fileToDataUri(rest.cedulaFileFrente)
+        ? compressImage(rest.cedulaFileFrente) // Usar compressImage
         : (enrollment as Register)?.cedulaFileFrente,
       rest.cedulaFileReverso instanceof File
-        ? fileToDataUri(rest.cedulaFileReverso)
+        ? compressImage(rest.cedulaFileReverso) // Usar compressImage
         : (enrollment as Register)?.cedulaFileReverso,
       rest.diplomaFile instanceof File
-        ? fileToDataUri(rest.diplomaFile)
+        ? compressImage(rest.diplomaFile) // Usar compressImage
         : (enrollment as Register)?.diplomaFile,
       rest.birthCertificateFile instanceof File
-        ? fileToDataUri(rest.birthCertificateFile)
+        ? compressImage(rest.birthCertificateFile) // Usar compressImage
         : (enrollment as Register)?.birthCertificateFile,
       rest.gradesCertificateFile instanceof File
-        ? fileToDataUri(rest.gradesCertificateFile)
+        ? compressImage(rest.gradesCertificateFile) // Usar compressImage
         : (enrollment as Register)?.gradesCertificateFile,
     ]);
 
@@ -1440,9 +1500,8 @@ export default function StudentRegisterForm({
                                         key={career.id}
                                         value={career.name}
                                         className="cursor-pointer"
-                                        disabled={!career.active}
                                       >
-                                        {career.name} {!career.active ? "(Sin cupos)" : ""}
+                                        {career.name}
                                       </SelectItem>
                                     ))}
                                   </SelectGroup>
