@@ -443,10 +443,10 @@ export default function StudentRegisterForm({
   const [hasBirthDate, setHasBirthDate] = useState(false);
   const [showWhatsAppButton, setShowWhatsAppButton] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
-  
+   
   const [currentStep, setCurrentStep] = useState(0);
   const formTopRef = useRef<HTMLDivElement>(null);
-  
+   
   const isOnline = useOnlineStatus();
 
   useEffect(() => {
@@ -1500,8 +1500,9 @@ export default function StudentRegisterForm({
                                         key={career.id}
                                         value={career.name}
                                         className="cursor-pointer"
+                                        disabled={!career.active} // <-- AGREGADO
                                       >
-                                        {career.name}
+                                        {career.name} {!career.active ? "(Sin cupos)" : ""} {/* <-- AGREGADO */}
                                       </SelectItem>
                                     ))}
                                   </SelectGroup>
@@ -1848,7 +1849,7 @@ export default function StudentRegisterForm({
                  </div>
              )}
           </div>
-          
+           
           {showWhatsAppButton && (
               <Button
                 type="button"
