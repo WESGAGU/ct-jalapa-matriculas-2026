@@ -1,4 +1,3 @@
-// src/components/register/register-list.tsx
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -33,16 +32,17 @@ import {
   X,
   Loader2,
   FileText,
-  Printer,      // Icono para imprimir
-  CheckCircle2, // Icono para estado impreso
+  Printer,
+  CheckCircle2,
 } from "lucide-react";
+import { FaWhatsapp } from "react-icons/fa"; // Importar ícono de WhatsApp
 import Link from "next/link";
 import {
   getEnrollments,
   deleteEnrollment,
   getCareers,
   getUsers,
-  markAsPrinted, // Acción del servidor
+  markAsPrinted,
 } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Register, User } from "@/lib/types";
@@ -52,6 +52,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "../ui/dropdown-menu";
 import { Skeleton } from "../ui/skeleton";
 import {
@@ -73,6 +74,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { generateWhatsAppLink } from "@/lib/whatsapp-link"; // Importar generador de link
 
 // --- HOOKS ---
 
@@ -115,7 +117,6 @@ type UserWithRole = User & {
   id?: string;
 };
 
-// Extendemos el tipo para incluir isPrinted localmente si TS no lo infiere aun
 type ExtendedRegister = Register & {
   isPrinted?: boolean;
 };
@@ -138,7 +139,10 @@ const DocumentStatus = ({ enrollment }: { enrollment: Register }) => {
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger>
-          <Badge variant="outline" className="flex items-center cursor-default border-blue-300 bg-blue-50 text-blue-800">
+          <Badge
+            variant="outline"
+            className="flex items-center cursor-default border-blue-300 bg-blue-50 text-blue-800"
+          >
             <FileText className="h-4 w-4 mr-1" />
             {presentDocs.length} documento(s)
           </Badge>
@@ -156,23 +160,39 @@ const DocumentStatus = ({ enrollment }: { enrollment: Register }) => {
   );
 };
 
+// --- COMPONENTE DE ACCIONES (MODIFICADO) ---
 const EnrollmentActions = ({
   enrollment,
   onDelete,
   onView,
   currentUser,
   isViewing,
+  careers, // Recibimos las carreras para calcular el turno si falta
 }: {
   enrollment: Register;
   onDelete: (id: string) => void;
   onView: (enrollment: Register) => void;
   currentUser: UserWithRole | null;
   isViewing: boolean;
+  careers: Career[];
 }) => {
   const isAdmin = currentUser?.role === "ADMIN";
   const isOwner = currentUser?.id === enrollment.userId;
   const canEditDelete = isAdmin || isOwner;
   const canManageUnassigned = isAdmin && enrollment.userId === null;
+
+  // Lógica para generar link de WhatsApp
+  let shift = enrollment.career?.shift;
+  if (!shift && careers.length > 0) {
+    const foundCareer = careers.find(
+      (c) => c.name === enrollment.carreraTecnica
+    );
+    shift = foundCareer?.shift;
+  }
+  const whatsappUrl = generateWhatsAppLink(
+    enrollment,
+    shift || "Turno Regular"
+  );
 
   return (
     <DropdownMenu>
@@ -186,7 +206,7 @@ const EnrollmentActions = ({
           <span className="sr-only">Abrir menú</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuItem
           onClick={() => onView(enrollment)}
           disabled={isViewing}
@@ -196,11 +216,23 @@ const EnrollmentActions = ({
           ) : (
             <Eye className="mr-2 h-4 w-4" />
           )}
-          Ver
+          Ver Detalles
         </DropdownMenuItem>
+
+        {/* --- OPCIÓN DE WHATSAPP INTEGRADA --- */}
+        {whatsappUrl && (
+          <DropdownMenuItem
+            onClick={() => window.open(whatsappUrl, "_blank")}
+            className="text-green-700 focus:text-green-800 focus:bg-green-50"
+          >
+            <FaWhatsapp className="mr-2 h-4 w-4" />
+            Notificar por WhatsApp
+          </DropdownMenuItem>
+        )}
 
         {(canEditDelete || canManageUnassigned) && (
           <>
+            <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <Link
                 href={`register/edit/${enrollment.id}`}
@@ -211,7 +243,7 @@ const EnrollmentActions = ({
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onDelete(enrollment.id)}
-              className="text-destructive focus:text-destructive"
+              className="text-destructive focus:text-destructive focus:bg-destructive/10"
             >
               <Trash2 className="mr-2 h-4 w-4" /> Borrar
             </DropdownMenuItem>
@@ -229,9 +261,8 @@ export default function RegisterList() {
   const [enrollments, setEnrollments] = useState<ExtendedRegister[]>([]);
   const [pendingEnrollments, setPendingEnrollments] = useState<Register[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [enrollmentToView, setEnrollmentToView] = useState<ExtendedRegister | null>(
-    null
-  );
+  const [enrollmentToView, setEnrollmentToView] =
+    useState<ExtendedRegister | null>(null);
   const { toast } = useToast();
   const [isClient, setIsClient] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -248,7 +279,7 @@ export default function RegisterList() {
   const [searchCareer, setSearchCareer] = useState("");
   const [searchName, setSearchName] = useState("");
   const [searchDocumentFilter, setSearchDocumentFilter] = useState("all");
-  const [searchPrintedFilter, setSearchPrintedFilter] = useState("all"); // NUEVO FILTRO
+  const [searchPrintedFilter, setSearchPrintedFilter] = useState("all");
 
   const [careers, setCareers] = useState<Career[]>([]);
   const [users, setUsers] = useState<{ id: string; name: string | null }[]>([]);
@@ -259,18 +290,18 @@ export default function RegisterList() {
   const debouncedSearchUser = useDebounce(searchUser, 500);
   const debouncedSearchCareer = useDebounce(searchCareer, 500);
   const debouncedSearchDocumentFilter = useDebounce(searchDocumentFilter, 500);
-  const debouncedSearchPrintedFilter = useDebounce(searchPrintedFilter, 500); // DEBOUNCE NUEVO
+  const debouncedSearchPrintedFilter = useDebounce(searchPrintedFilter, 500);
 
   const loadAllData = useCallback(
     async (
       page: number,
-      filters: { 
-        date?: string; 
-        user?: string; 
+      filters: {
+        date?: string;
+        user?: string;
         career?: string;
         name?: string;
         documentFilter?: string;
-        printedFilter?: string; // NUEVO PARAMETRO
+        printedFilter?: string;
       } = {}
     ) => {
       setIsLoading(true);
@@ -287,8 +318,10 @@ export default function RegisterList() {
             ? undefined
             : filters.career,
         name: filters.name || undefined,
-        documentFilter: filters.documentFilter === "all" ? undefined : filters.documentFilter,
-        printedFilter: filters.printedFilter === "all" ? undefined : filters.printedFilter, // AÑADIDO AL REQUEST
+        documentFilter:
+          filters.documentFilter === "all" ? undefined : filters.documentFilter,
+        printedFilter:
+          filters.printedFilter === "all" ? undefined : filters.printedFilter,
       };
       try {
         const [serverData, localData, careersData, usersData] =
@@ -329,7 +362,7 @@ export default function RegisterList() {
         career: debouncedSearchCareer,
         name: debouncedSearchName,
         documentFilter: debouncedSearchDocumentFilter,
-        printedFilter: debouncedSearchPrintedFilter, // DEPENDENCIA AÑADIDA
+        printedFilter: debouncedSearchPrintedFilter,
       });
     }
   }, [
@@ -340,7 +373,7 @@ export default function RegisterList() {
     debouncedSearchCareer,
     debouncedSearchName,
     debouncedSearchDocumentFilter,
-    debouncedSearchPrintedFilter, // DEPENDENCIA AÑADIDA
+    debouncedSearchPrintedFilter,
     loadAllData,
   ]);
 
@@ -353,12 +386,21 @@ export default function RegisterList() {
         career: searchCareer,
         name: searchName,
         documentFilter: searchDocumentFilter,
-        printedFilter: searchPrintedFilter, // PARAMETRO AÑADIDO
+        printedFilter: searchPrintedFilter,
       });
     window.addEventListener("storageUpdated", handleStorageChange);
     return () =>
       window.removeEventListener("storageUpdated", handleStorageChange);
-  }, [loadAllData, currentPage, searchDate, searchUser, searchCareer, searchName, searchDocumentFilter, searchPrintedFilter]);
+  }, [
+    loadAllData,
+    currentPage,
+    searchDate,
+    searchUser,
+    searchCareer,
+    searchName,
+    searchDocumentFilter,
+    searchPrintedFilter,
+  ]);
 
   // --- MANEJADORES ---
 
@@ -389,14 +431,16 @@ export default function RegisterList() {
 
   const handlePrintMark = async () => {
     if (!enrollmentToView) return;
-    
+
     setIsMarkingPrinted(true);
-    
+
     try {
       // 1. Generar PDF
-      const blob = await pdf(<EnrollmentPDF enrollment={enrollmentToView} />).toBlob();
+      const blob = await pdf(
+        <EnrollmentPDF enrollment={enrollmentToView} />
+      ).toBlob();
       const url = URL.createObjectURL(blob);
-      
+
       // 2. Abrir PDF
       window.open(url, "_blank");
 
@@ -404,19 +448,22 @@ export default function RegisterList() {
       await markAsPrinted(enrollmentToView.id);
 
       // 4. Actualizar UI
-      setEnrollments((prev) => 
-        prev.map((e) => e.id === enrollmentToView.id ? { ...e, isPrinted: true } : e)
+      setEnrollments((prev) =>
+        prev.map((e) =>
+          e.id === enrollmentToView.id ? { ...e, isPrinted: true } : e
+        )
       );
-      setEnrollmentToView((prev) => prev ? { ...prev, isPrinted: true } : null);
-      
+      setEnrollmentToView((prev) =>
+        prev ? { ...prev, isPrinted: true } : null
+      );
+
       toast({
         title: "Estado actualizado",
         description: "El registro se ha marcado como impreso.",
-        className: "bg-green-50 border-green-200 text-green-800"
+        className: "bg-green-50 border-green-200 text-green-800",
       });
 
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-      
     } catch (error) {
       console.error("Error al imprimir:", error);
       toast({
@@ -473,7 +520,7 @@ export default function RegisterList() {
     setSearchCareer("");
     setSearchName("");
     setSearchDocumentFilter("all");
-    setSearchPrintedFilter("all"); // LIMPIAR NUEVO FILTRO
+    setSearchPrintedFilter("all");
     if (currentPage !== 1) {
       setCurrentPage(1);
     } else {
@@ -536,7 +583,7 @@ export default function RegisterList() {
               value={searchDate}
               onChange={(e) => setSearchDate(e.target.value)}
             />
-            
+
             {/* FILTRO NOMBRE */}
             <Input
               placeholder="Buscar por nombre o apellido"
@@ -544,8 +591,11 @@ export default function RegisterList() {
               onChange={(e) => setSearchName(e.target.value)}
             />
 
-            {/* --- NUEVO FILTRO DE ESTADO DE IMPRESIÓN --- */}
-            <Select value={searchPrintedFilter} onValueChange={setSearchPrintedFilter}>
+            {/* FILTRO DE ESTADO DE IMPRESIÓN */}
+            <Select
+              value={searchPrintedFilter}
+              onValueChange={setSearchPrintedFilter}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Estado de Impresión" />
               </SelectTrigger>
@@ -555,7 +605,7 @@ export default function RegisterList() {
                 <SelectItem value="printed">Impresos</SelectItem>
               </SelectContent>
             </Select>
-            
+
             {/* FILTRO USUARIO */}
             <Select value={searchUser} onValueChange={setSearchUser}>
               <SelectTrigger>
@@ -563,7 +613,9 @@ export default function RegisterList() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los usuarios</SelectItem>
-                <SelectItem value="PUBLIC_USER">Público (Sin asignar)</SelectItem>
+                <SelectItem value="PUBLIC_USER">
+                  Público (Sin asignar)
+                </SelectItem>
                 {users
                   .filter((user) => user.name)
                   .map((user) => (
@@ -573,7 +625,7 @@ export default function RegisterList() {
                   ))}
               </SelectContent>
             </Select>
-            
+
             {/* FILTRO CARRERA */}
             <Select value={searchCareer} onValueChange={setSearchCareer}>
               <SelectTrigger>
@@ -603,7 +655,10 @@ export default function RegisterList() {
             </Select>
 
             {/* FILTRO DOCUMENTOS */}
-            <Select value={searchDocumentFilter} onValueChange={setSearchDocumentFilter}>
+            <Select
+              value={searchDocumentFilter}
+              onValueChange={setSearchDocumentFilter}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Filtrar por documentos" />
               </SelectTrigger>
@@ -663,9 +718,7 @@ export default function RegisterList() {
                         {enrollment.nombres} {enrollment.apellidos}
                       </TableCell>
                       <TableCell>{enrollment.carreraTecnica}</TableCell>
-                      <TableCell>
-                        {enrollment.career?.shift || "N/A"}
-                      </TableCell>
+                      <TableCell>{enrollment.career?.shift || "N/A"}</TableCell>
                       <TableCell>
                         {new Date(enrollment.createdAt).toLocaleDateString()}
                       </TableCell>
@@ -694,25 +747,31 @@ export default function RegisterList() {
                           </Badge>
                         )}
                       </TableCell>
-                      
-                      {/* NUEVA COLUMNA ESTADO DE IMPRESIÓN */}
+
                       <TableCell className="text-center">
                         {(enrollment as ExtendedRegister).isPrinted ? (
-                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1 w-fit mx-auto">
+                          <Badge
+                            variant="outline"
+                            className="bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1 w-fit mx-auto"
+                          >
                             <CheckCircle2 className="h-3 w-3" /> Impreso
                           </Badge>
                         ) : (
-                          <span className="text-muted-foreground text-xs">-</span>
+                          <span className="text-muted-foreground text-xs">
+                            -
+                          </span>
                         )}
                       </TableCell>
 
                       <TableCell className="text-right">
+                        {/* --- BOTONES DE ACCIÓN (INCLUYE WHATSAPP ADENTRO) --- */}
                         <EnrollmentActions
                           enrollment={enrollment}
                           onDelete={handleDelete}
                           onView={handleView}
                           currentUser={currentUser}
                           isViewing={isGeneratingPdf === enrollment.id}
+                          careers={careers}
                         />
                       </TableCell>
                     </TableRow>
@@ -760,12 +819,14 @@ export default function RegisterList() {
                   <CardTitle className="text-base">
                     {enrollment.nombres} {enrollment.apellidos}
                   </CardTitle>
+                  {/* --- BOTONES DE ACCIÓN MÓVIL (WHATSAPP ADENTRO) --- */}
                   <EnrollmentActions
                     enrollment={enrollment}
                     onDelete={handleDelete}
                     onView={handleView}
                     currentUser={currentUser}
                     isViewing={isGeneratingPdf === enrollment.id}
+                    careers={careers}
                   />
                 </div>
               </CardHeader>
@@ -789,9 +850,7 @@ export default function RegisterList() {
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">
-                    Registrado por:
-                  </span>
+                  <span className="text-muted-foreground">Registrado por:</span>
                   <span>{enrollment.user?.name || "Público"}</span>
                 </div>
                 <div className="flex justify-between items-center pt-2">
@@ -800,9 +859,7 @@ export default function RegisterList() {
                 </div>
                 <div className="flex justify-between items-center pt-2">
                   <span className="text-muted-foreground">Estado:</span>
-                  {pendingEnrollments.some(
-                    (p) => p.id === enrollment.id
-                  ) ? (
+                  {pendingEnrollments.some((p) => p.id === enrollment.id) ? (
                     <Badge
                       variant="outline"
                       className="bg-yellow-100 text-yellow-800 border-yellow-300"
@@ -818,14 +875,18 @@ export default function RegisterList() {
                     </Badge>
                   )}
                 </div>
-                {/* NUEVO INDICADOR MÓVIL */}
                 <div className="flex justify-between items-center pt-2">
-                    <span className="text-muted-foreground">Impresión:</span>
-                    {(enrollment as ExtendedRegister).isPrinted ? (
-                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Impreso</Badge>
-                    ) : (
-                        <span>No</span>
-                    )}
+                  <span className="text-muted-foreground">Impresión:</span>
+                  {(enrollment as ExtendedRegister).isPrinted ? (
+                    <Badge
+                      variant="outline"
+                      className="bg-blue-50 text-blue-700 border-blue-200"
+                    >
+                      Impreso
+                    </Badge>
+                  ) : (
+                    <span>No</span>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -865,16 +926,16 @@ export default function RegisterList() {
           </DialogHeader>
           <div className="flex-1 overflow-auto border rounded-md my-4 bg-gray-100">
             {isClient && enrollmentToView && (
-              <PDFViewer style={{ width: "100%", height: "100%" }} showToolbar={false}>
+              <PDFViewer
+                style={{ width: "100%", height: "100%" }}
+                showToolbar={false}
+              >
                 <EnrollmentPDF enrollment={enrollmentToView} />
               </PDFViewer>
             )}
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              onClick={() => setEnrollmentToView(null)}
-            >
+            <Button variant="outline" onClick={() => setEnrollmentToView(null)}>
               Cerrar
             </Button>
 
@@ -895,18 +956,20 @@ export default function RegisterList() {
 
             {/* BOTÓN IMPRIMIR Y MARCAR */}
             {isClient && enrollmentToView && (
-                <Button 
-                    onClick={handlePrintMark} 
-                    disabled={isMarkingPrinted}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                    {isMarkingPrinted ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                        <Printer className="mr-2 h-4 w-4" />
-                    )}
-                    {enrollmentToView.isPrinted ? "Re-Imprimir" : "Imprimir y Marcar"}
-                </Button>
+              <Button
+                onClick={handlePrintMark}
+                disabled={isMarkingPrinted}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {isMarkingPrinted ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Printer className="mr-2 h-4 w-4" />
+                )}
+                {enrollmentToView.isPrinted
+                  ? "Re-Imprimir"
+                  : "Imprimir y Marcar"}
+              </Button>
             )}
           </DialogFooter>
         </DialogContent>

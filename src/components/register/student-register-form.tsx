@@ -47,8 +47,8 @@ import {
   ArrowLeft,
   User as UserIcon,
   GraduationCap,  
-  Phone,          
-  FileText        
+  Phone,           
+  FileText         
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, isBefore, subYears } from "date-fns";
@@ -686,7 +686,7 @@ export default function StudentRegisterForm({
 
   const nextStep = async () => {
     const fields = steps[currentStep].fields;
-   
+    
     const isStepValid = await trigger(fields);
 
     if (isStepValid) {
@@ -843,11 +843,29 @@ export default function StudentRegisterForm({
         throw new Error(result.error || "Error desconocido del servidor");
       }
 
+      // --- LOGICA DE NOTIFICACION DE FECHA DE INICIO DE CLASES ---
+      let messageSuffix = "";
+      // Buscamos la carrera seleccionada para saber su turno
+      const selectedCareer = careers.find(c => c.name === enrollmentData.carreraTecnica);
+      
+      if (selectedCareer) {
+        const shift = selectedCareer.shift ? selectedCareer.shift.toLowerCase() : "";
+        
+        if (shift.includes("diurno")) {
+          messageSuffix = " Las clases inician el 2 de febrero.";
+        } else if (shift.includes("sabatino")) {
+          messageSuffix = " Las clases inician el 7 de febrero.";
+        } else if (shift.includes("dominical")) {
+          messageSuffix = " Las clases inician el 8 de febrero.";
+        }
+      }
+      // -----------------------------------------------------------
+
       Swal.fire({
         title: isEditMode ? "¡Matrícula Actualizada!" : "¡Matrícula Exitosa!",
         text: isEditMode
           ? `El registro de ${enrollmentData.nombres} ha sido actualizado.`
-          : `Tu registro para ${enrollmentData.carreraTecnica} ha sido enviado correctamente.`,
+          : `Tu registro para ${enrollmentData.carreraTecnica} ha sido enviado correctamente.${messageSuffix}`,
         icon: "success",
         confirmButtonColor: "#3085d6",
         confirmButtonText: "Entendido",
@@ -917,7 +935,7 @@ export default function StudentRegisterForm({
                 
                 return (
                     <div key={step.id} className="flex flex-col items-center relative flex-1 group">
-                         <div 
+                          <div 
                             className={cn(
                                 "w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 z-10 bg-background",
                                 isActive 
@@ -970,7 +988,7 @@ export default function StudentRegisterForm({
           {/* PASO 1: DATOS PERSONALES */}
           {currentStep === 0 && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
-                 <div className={formGridClass}>
+                  <div className={formGridClass}>
                     {/* Nombres */}
                     <FormField
                       control={form.control}
@@ -1468,7 +1486,7 @@ export default function StudentRegisterForm({
           {/* PASO 2: CARRERA TÉCNICA */}
           {currentStep === 1 && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                 <div className="grid grid-cols-1 max-w-md mx-auto">
+                  <div className="grid grid-cols-1 max-w-md mx-auto">
                     <FormField
                       control={form.control}
                       name="carreraTecnica"
@@ -1546,7 +1564,7 @@ export default function StudentRegisterForm({
                           <FormLabel>Nombres y Apellidos</FormLabel>
                           <FormControl>
                             <Input
-                              placeholder="Nombre completo"
+                              placeholder="Nombre completo de su Familiar"
                               {...field}
                               onChange={(e) =>
                                 field.onChange(capitalizeWords(e.target.value))
@@ -1585,7 +1603,7 @@ export default function StudentRegisterForm({
                           <FormControl>
                             <Input
                               type="tel"
-                              placeholder="Número de contacto"
+                              placeholder="Número de telefono de su familiar"
                               maxLength={8}
                               {...field}
                             />
@@ -1623,7 +1641,7 @@ export default function StudentRegisterForm({
           {/* PASO 4: DOCUMENTOS */}
           {currentStep === 3 && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
                       <FormField
                         control={form.control}
@@ -1849,7 +1867,7 @@ export default function StudentRegisterForm({
                  </div>
              )}
           </div>
-           
+            
           {showWhatsAppButton && (
               <Button
                 type="button"
